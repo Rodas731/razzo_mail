@@ -1,0 +1,11 @@
+services:
+  razzo-mail:
+    build: .
+    container_name: razzo_mail_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - RUST_LOG=info

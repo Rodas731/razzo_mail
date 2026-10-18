@@ -1,0 +1,28 @@
+# Configurazione Fly.io per Razzo Mail (Disponibilità Cloud 24/7 con HTTPS e Volume Persistente)
+app = "razzo-mail-roberto"
+primary_region = "fra" # Frankfurt (o "cdg" Parigi, o "mxp" Milano)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  RUST_LOG = "razzo_mail=info,tower_http=info"
+  RAZZO_NO_GUI = "1"
+  RAZZO_ADMIN_KEY = "razzo-admin-2026"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[mounts]
+  source = "razzo_data"
+  destination = "/app/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

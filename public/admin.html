@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Razzo Mail — Console Amministrazione</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <style>
+    /* Specific Admin Console Styles */
+    .admin-container {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      position: relative;
+      z-index: 2;
+    }
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .admin-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .admin-badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(255, 94, 54, 0.15);
+      color: #ff5e36;
+      border: 1px solid rgba(255, 94, 54, 0.35);
+    }
+    .admin-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-admin {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+    .btn-admin:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .btn-admin-danger {
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.3);
+      background: rgba(248, 113, 113, 0.08);
+    }
+    .btn-admin-danger:hover {
+      background: rgba(248, 113, 113, 0.2);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: rgba(18, 20, 29, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #ff5e36, #a855f7);
+      opacity: 0.8;
+    }
+    .stat-card.cyan::before { background: linear-gradient(90deg, #00ffcc, #0284c7); }
+    .stat-card.emerald::before { background: linear-gradient(90deg, #10b981, #059669); }
+    .stat-card.purple::before { background: linear-gradient(90deg, #a855f7, #6366f1); }
+    
+    .stat-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .stat-sub {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.4rem;
+    }
+
+    /* Navigation Tabs */
+    .admin-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 0.5rem;
+    }
+    .admin-tab-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .admin-tab-btn:hover {
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .admin-tab-btn.active {
+      color: #00ffcc;
+      background: rgba(0, 255, 204, 0.1);
+      border: 1px solid rgba(0, 255, 204, 0.25);
+    }
+
+    /* Data Tables */
+    .table-container {
+      background: rgba(18, 20, 29, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      overflow-x: auto;
+      padding: 0.5rem;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    table.data-table th {
+      padding: 0.85rem 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    table.data-table td {
+      padding: 0.85rem 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+      vertical-align: middle;
+    }
+    table.data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .code-cell {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #00ffcc;
+      background: rgba(0, 255, 204, 0.08);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      display: inline-block;
+      white-space: nowrap;
+    }
+    .badge-event {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .badge-DEPOSIT { background: rgba(0, 255, 204, 0.15); color: #00ffcc; border: 1px solid rgba(0, 255, 204, 0.3); }
+    .badge-PICKUP_BURN { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-PICKUP_RETAIN { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-EXPIRED_SWEEP { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-AUTO_DESTRUCT_BRUTE_FORCE { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-ADMIN_FORCED_DELETE { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* Login Modal Overlay */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 11, 16, 0.92);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+    }
+    .login-card {
+      background: #12141d;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 94, 54, 0.15);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .login-card h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+    .login-card p {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+    .login-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .login-input:focus {
+      border-color: #ff5e36;
+      box-shadow: 0 0 0 3px rgba(255, 94, 54, 0.2);
+    }
+    .login-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #ff5e36, #ff7e5f);
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .login-btn:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+    .login-error {
+      color: #f87171;
+      font-size: 0.8rem;
+      margin-top: 0.75rem;
+      display: none;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background glow -->
+  <div class="background-decorations">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- Login Modal -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🛡️</div>
+      <h2>Accesso Amministratore</h2>
+      <p>Inserisci la password segreta per accedere ai dati e alle statistiche di utilizzo.</p>
+      <input type="password" id="adminPasswordInput" class="login-input" placeholder="Password Admin" autocomplete="current-password" autofocus>
+      <button id="adminLoginBtn" class="login-btn">Accedi al Database</button>
+      <div id="loginErrorMsg" class="login-error">Password non corretta. Riprova.</div>
+      <div style="margin-top: 1.25rem;">
+        <a href="/" style="color: #94a3b8; font-size: 0.8rem; text-decoration: none;">← Torna a Razzo Mail</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Admin Console -->
+  <div class="admin-container" id="adminDashboard" style="display: none;">
+    <!-- Top Header -->
+    <header class="admin-header">
+      <div class="admin-brand">
+        <a href="/" style="display: flex; align-items: center; text-decoration: none; color: inherit; gap: 0.6rem;">
+          <div class="logo-icon" style="width: 36px; height: 36px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+              <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; line-height: 1;">RAZZO MAIL</h1>
+            <span style="font-size: 0.75rem; color: #94a3b8;">Database & Console Amministrativa</span>
+          </div>
+        </a>
+        <span class="admin-badge">Admin</span>
+      </div>
+
+      <div class="admin-actions">
+        <button id="btnRefresh" class="btn-admin" title="Aggiorna Dati">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Aggiorna</span>
+        </button>
+        <button id="btnExport" class="btn-admin" title="Scarica Log in JSON">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Esporta Log</span>
+        </button>
+        <button id="btnLogout" class="btn-admin btn-admin-danger" title="Esci">
+          <span>Disconnetti</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Key Metrics / Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card cyan">
+        <div class="stat-label">Locker Attivi Ora</div>
+        <div class="stat-value" id="statActiveLockers">0</div>
+        <div class="stat-sub">File attualmente nel database</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Depositi Totali</div>
+        <div class="stat-value" id="statTotalDeposits">0</div>
+        <div class="stat-sub">File inviati storicamente</div>
+      </div>
+      <div class="stat-card emerald">
+        <div class="stat-label">Ritiri con Successo</div>
+        <div class="stat-value" id="statTotalPickups">0</div>
+        <div class="stat-sub">File scaricati e bruciati</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Traffico & Utenti</div>
+        <div class="stat-value" id="statDataTransferred">0 MB</div>
+        <div class="stat-sub" id="statUniqueIps">0 IP unici registrati</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="admin-nav">
+      <button class="admin-tab-btn active" data-tab="tabLockers">📂 Locker Attivi (<span id="tabCountLockers">0</span>)</button>
+      <button class="admin-tab-btn" data-tab="tabAudit">📋 Registro Eventi & Audit</button>
+      <button class="admin-tab-btn" data-tab="tabIps">🌐 Dispositivi & IP Noti</button>
+    </div>
+
+    <!-- Tab 1: Locker Attivi -->
+    <div id="tabLockers" class="tab-content">
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Codice</th>
+              <th>Nome File</th>
+              <th>Dimensione</th>
+              <th>IP Mittente</th>
+              <th>Creato</th>
+              <th>Scadenza / Embargo</th>
+              <th>Protezione</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody id="lockersTableBody">
+            <tr><td colspan="8" class="empty-state">Caricamento in corso...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Audit Log Completo -->
+    <div id="tabAudit" class="tab-content" style="display: none;">
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Orario</th>
+              <th>Evento</th>
+              <th>Codice</th>
+              <th>File / Dati</th>
+              <th>IP Client</th>
+              <th>Dispositivo / Note</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody">
+            <tr><td colspan="6" class="empty-state">Caricamento in corso...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 3: IP Noti -->
+    <div id="tabIps" class="tab-content" style="display: none;">
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Indirizzo IP</th>
+              <th>Stato</th>
+              <th>Tipo Rete</th>
+            </tr>
+          </thead>
+          <tbody id="ipsTableBody">
+            <tr><td colspan="3" class="empty-state">Caricamento in corso...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let adminToken = sessionStorage.getItem('razzo_admin_token') || '';
+    let currentAuditEntries = [];
+
+    const loginOverlay = document.getElementById('loginOverlay');
+    const adminDashboard = document.getElementById('adminDashboard');
+    const adminPasswordInput = document.getElementById('adminPasswordInput');
+    const adminLoginBtn = document.getElementById('adminLoginBtn');
+    const loginErrorMsg = document.getElementById('loginErrorMsg');
+
+    // Init
+    if (adminToken) {
+      verifyAndLoad();
+    } else {
+      showLogin();
+    }
+
+    function showLogin() {
+      loginOverlay.style.display = 'flex';
+      adminDashboard.style.display = 'none';
+      adminPasswordInput.value = '';
+      loginErrorMsg.style.display = 'none';
+    }
+
+    function showDashboard() {
+      loginOverlay.style.display = 'none';
+      adminDashboard.style.display = 'block';
+      loadAllData();
+    }
+
+    async function attemptLogin() {
+      const pwd = adminPasswordInput.value.trim();
+      if (!pwd) return;
+
+      try {
+        const resp = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+          adminToken = data.token;
+          sessionStorage.setItem('razzo_admin_token', adminToken);
+          showDashboard();
+        } else {
+          loginErrorMsg.textContent = data.error || 'Password non valida';
+          loginErrorMsg.style.display = 'block';
+        }
+      } catch (err) {
+        loginErrorMsg.textContent = 'Errore di connessione al server';
+        loginErrorMsg.style.display = 'block';
+      }
+    }
+
+    adminLoginBtn.addEventListener('click', attemptLogin);
+    adminPasswordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') attemptLogin();
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      sessionStorage.removeItem('razzo_admin_token');
+      adminToken = '';
+      showLogin();
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', loadAllData);
+
+    // Tab Switching
+    document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-tab');
+        document.getElementById(targetId).style.display = 'block';
+      });
+    });
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatDate(isoStr) {
+      if (!isoStr) return '—';
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function verifyAndLoad() {
+      try {
+        const res = await fetch('/api/admin/stats', {
+          headers: { 'x-admin-key': adminToken }
+        });
+        if (res.ok) {
+          showDashboard();
+        } else {
+          sessionStorage.removeItem('razzo_admin_token');
+          showLogin();
+        }
+      } catch (e) {
+        showLogin();
+      }
+    }
+
+    async function loadAllData() {
+      await Promise.all([loadStats(), loadLockers(), loadAudit()]);
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats', { headers: { 'x-admin-key': adminToken } });
+        if (!res.ok) return;
+        const stats = await res.json();
+        document.getElementById('statActiveLockers').textContent = stats.active_lockers;
+        document.getElementById('statTotalDeposits').textContent = stats.total_deposits;
+        document.getElementById('statTotalPickups').textContent = stats.total_pickups;
+        document.getElementById('statDataTransferred').textContent = formatBytes(stats.total_bytes_transferred);
+        document.getElementById('statUniqueIps').textContent = `${stats.unique_ips.length} IP unici rilevati`;
+
+        // Render Known IPs
+        const ipsTbody = document.getElementById('ipsTableBody');
+        if (stats.unique_ips.length === 0) {
+          ipsTbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nessun IP registrato finora.</td></tr>';
+        } else {
+          ipsTbody.innerHTML = stats.unique_ips.map(ip => `
+            <tr>
+              <td><span class="code-cell" style="color: #93c5fd; background: rgba(59, 130, 246, 0.1);">${ip}</span></td>
+              <td><span style="color: #34d399; font-weight: 600;">● Attivo</span></td>
+              <td style="color: #94a3b8;">${ip.startsWith('192.168.') || ip === '127.0.0.1' ? 'Rete Locale / Wi-Fi' : 'Connessione Internet Esterna'}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadLockers() {
+      try {
+        const res = await fetch('/api/admin/lockers', { headers: { 'x-admin-key': adminToken } });
+        if (!res.ok) return;
+        const lockers = await res.json();
+        document.getElementById('tabCountLockers').textContent = lockers.length;
+
+        const tbody = document.getElementById('lockersTableBody');
+        if (lockers.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Nessun Locker attivo al momento nel database.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = lockers.map(item => {
+          let embargoText = 'Nessuno';
+          if (item.available_from) {
+            const isFuture = new Date(item.available_from) > new Date();
+            embargoText = isFuture ? `⏳ Bloccato fino a ${formatDate(item.available_from)}` : `✅ Sbloccato (${formatDate(item.available_from)})`;
+          }
+
+          return `
+            <tr>
+              <td><span class="code-cell">${item.code}</span></td>
+              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.filename}">
+                <strong>${item.filename}</strong>
+              </td>
+              <td>${formatBytes(item.size)}</td>
+              <td><span style="font-family: monospace; color: #94a3b8;">${item.sender_ip}</span></td>
+              <td>${formatDate(item.created_at)}</td>
+              <td>
+                <div style="font-size: 0.8rem; color: #f87171;">Scade: ${formatDate(item.expires_at)}</div>
+                ${item.available_from ? `<div style="font-size: 0.75rem; color: #fbbf24;">${embargoText}</div>` : ''}
+              </td>
+              <td>
+                ${item.has_pin ? '<span style="color: #fbbf24; font-weight: 600;">🔒 PIN Attivo</span>' : '<span style="color: #94a3b8;">Libero</span>'}
+                ${item.burn_after_reading ? '<br><span style="color: #ff5e36; font-size: 0.75rem;">💥 Autodistruzione</span>' : ''}
+              </td>
+              <td>
+                <button class="btn-admin btn-admin-danger" onclick="deleteLocker('${item.code}')" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
+                  Elimina
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadAudit() {
+      try {
+        const res = await fetch('/api/admin/audit', { headers: { 'x-admin-key': adminToken } });
+        if (!res.ok) return;
+        currentAuditEntries = await res.json();
+
+        const tbody = document.getElementById('auditTableBody');
+        if (currentAuditEntries.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nessun evento registrato.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = currentAuditEntries.map(e => {
+          let eventClass = 'badge-' + e.event;
+          let fileInfo = e.filename ? `<strong>${e.filename}</strong> (${formatBytes(e.size)})` : '—';
+
+          return `
+            <tr>
+              <td style="white-space: nowrap; color: #94a3b8; font-size: 0.8rem;">${formatDate(e.timestamp)}</td>
+              <td><span class="badge-event ${eventClass}">${e.event}</span></td>
+              <td><span class="code-cell">${e.code}</span></td>
+              <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${fileInfo}</td>
+              <td style="font-family: monospace; color: #93c5fd;">${e.client_ip}</td>
+              <td style="font-size: 0.78rem; color: #94a3b8; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="${e.user_agent}">
+                ${e.details || e.user_agent.split(' ')[0]}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    window.deleteLocker = async function(code) {
+      if (!confirm(`Sei sicuro di voler eliminare forzatamente il Locker ${code}? Il file verrà rimosso immediatamente dal disco.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/lockers/${code}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-key': adminToken }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          loadAllData();
+        } else {
+          alert(data.error || 'Errore durante l\'eliminazione');
+        }
+      } catch (e) {
+        alert('Errore di comunicazione con il server');
+      }
+    };
+
+    // Export audit log to JSON file
+    document.getElementById('btnExport').addEventListener('click', () => {
+      if (!currentAuditEntries || currentAuditEntries.length === 0) {
+        alert('Nessun dato da esportare');
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentAuditEntries, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `razzo_mail_audit_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    // Auto-refresh every 20 seconds
+    setInterval(() => {
+      if (adminToken && adminDashboard.style.display !== 'none') {
+        loadAllData();
+      }
+    }, 20000);
+  </script>
+</body>
+</html>

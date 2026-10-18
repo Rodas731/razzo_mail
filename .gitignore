@@ -1,0 +1,5 @@
+/target
+/data/uploads/*
+/data/*.json
+/data/*.jsonl
+/data/*.tmp
