@@ -59,13 +59,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const waitingReceiverCard = document.getElementById('waitingReceiverCard');
   const waitingLockerCodeSpan = document.getElementById('waitingLockerCodeSpan');
   const downloadReadyCard = document.getElementById('downloadReadyCard');
+  const readyBadge = document.getElementById('readyBadge');
+  const readyBadgeIcon = document.getElementById('readyBadgeIcon');
+  const readyBadgeText = document.getElementById('readyBadgeText');
   const readyFileName = document.getElementById('readyFileName');
   const readyFileSize = document.getElementById('readyFileSize');
   const readyFileExpiry = document.getElementById('readyFileExpiry');
   const readyBurnWarning = document.getElementById('readyBurnWarning');
   const readyNoteContentBox = document.getElementById('readyNoteContentBox');
   const readyNoteText = document.getElementById('readyNoteText');
+  const copyNoteBtn = document.getElementById('copyNoteBtn');
+  const readyNoteBurnedMsg = document.getElementById('readyNoteBurnedMsg');
   const executeDownloadBtn = document.getElementById('executeDownloadBtn');
+  const executeDownloadBtnInner = document.getElementById('executeDownloadBtnInner');
+  const executeDownloadBtnText = document.getElementById('executeDownloadBtnText');
+  const notePostViewActions = document.getElementById('notePostViewActions');
+  const closeNoteViewBtn = document.getElementById('closeNoteViewBtn');
+  const downloadNoteAsFileBtn = document.getElementById('downloadNoteAsFileBtn');
 
   const toastContainer = document.getElementById('toastContainer');
 
@@ -75,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeWs = null;
   let currentDepositedCode = '';
   let activeLockerData = null;
+  let lastViewedNoteText = '';
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
@@ -363,7 +374,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let fileToUpload = selectedFile;
 
     // Check if sending text note
-    if (!fileToUpload && isNoteMode && textNoteInput.value.trim().length > 0) {
+    const isSendingNote = !fileToUpload && isNoteMode && textNoteInput.value.trim().length > 0;
+    if (isSendingNote) {
       const noteContent = textNoteInput.value.trim();
       const blob = new Blob([noteContent], { type: 'text/plain;charset=utf-8' });
       fileToUpload = new File([blob], `messaggio_${lockerCode}.txt`, { type: 'text/plain' });
@@ -380,6 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     formData.append('file', fileToUpload);
     formData.append('burn', burn ? 'true' : 'false');
     formData.append('ttl_hours', ttlHours);
+    formData.append('is_note', isSendingNote ? 'true' : 'false');
     if (pin) formData.append('pin', pin);
     if (availableFrom) formData.append('available_from', new Date(availableFrom).toISOString());
 
@@ -406,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
       depositSuccessCard.classList.remove('hidden');
       successCodeDisplay.textContent = lockerCode;
 
-      showToast('File depositato nel Locker con successo!', 'success');
+      showToast(isSendingNote ? 'Nota di testo depositata con successo!' : 'File depositato nel Locker con successo!', 'success');
 
       // Start Real-Time WebSocket Listener for Sender
       connectSenderWebSocket(lockerCode);
@@ -587,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (msg.type === 'file_deposited') {
           // File has arrived! Fetch details and display
           waitingReceiverCard.classList.add('hidden');
-          showToast('🚀 Il mittente ha appena depositato il file!', 'success');
+          showToast(msg.is_note ? '🚀 Il mittente ha inviato una nota di testo!' : '🚀 Il mittente ha appena depositato il file!', 'success');
 
           // Trigger check
           const res = await fetch('/api/lockers/check', {
@@ -611,30 +624,86 @@ document.addEventListener('DOMContentLoaded', () => {
     waitingReceiverCard.classList.add('hidden');
     downloadReadyCard.classList.remove('hidden');
 
-    readyFileName.textContent = data.filename || 'File allegato';
-    readyFileSize.textContent = formatBytes(data.size || 0);
+    const isNote = Boolean(data.is_note || (data.filename && data.filename.startsWith('messaggio_') && data.filename.endsWith('.txt')));
+    data.is_note = isNote;
+
+    // Reset previous note state if any
+    readyNoteContentBox.classList.add('hidden');
+    if (readyNoteBurnedMsg) readyNoteBurnedMsg.classList.add('hidden');
+    readyNoteText.textContent = '';
+    executeDownloadBtn.classList.remove('hidden');
+    if (notePostViewActions) notePostViewActions.classList.add('hidden');
+
+    if (isNote) {
+      if (readyBadgeIcon) {
+        readyBadgeIcon.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        `;
+      }
+      if (readyBadgeText) readyBadgeText.textContent = 'NOTA DI TESTO PRONTA';
+      readyFileName.textContent = 'Nota di testo / Cartolina';
+      readyFileSize.textContent = formatBytes(data.size || 0);
+
+      if (data.burn) {
+        readyBurnWarning.textContent = '🔥 Questa nota si autodistruggerà subito dopo la visualizzazione';
+        readyBurnWarning.classList.remove('hidden');
+      } else {
+        readyBurnWarning.classList.add('hidden');
+      }
+
+      executeDownloadBtn.className = 'btn-primary-action btn-view-note';
+      executeDownloadBtnInner.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>VISUALIZZA NOTA</span>
+      `;
+    } else {
+      if (readyBadgeIcon) {
+        readyBadgeIcon.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+        `;
+      }
+      if (readyBadgeText) readyBadgeText.textContent = 'FILE PRONTO AL RITIRO';
+      readyFileName.textContent = data.filename || 'File allegato';
+      readyFileSize.textContent = formatBytes(data.size || 0);
+
+      if (data.burn) {
+        readyBurnWarning.textContent = '🔥 Questo file si autodistruggerà subito dopo il download';
+        readyBurnWarning.classList.remove('hidden');
+      } else {
+        readyBurnWarning.classList.add('hidden');
+      }
+
+      executeDownloadBtn.className = 'btn-primary-action btn-download';
+      executeDownloadBtnInner.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>SCARICA SUBITO</span>
+      `;
+    }
 
     const expMin = Math.max(1, Math.round((new Date(data.expires_at) - new Date()) / 60000));
     readyFileExpiry.textContent = `Scade tra ${expMin} min`;
-
-    if (data.burn) {
-      readyBurnWarning.classList.remove('hidden');
-    } else {
-      readyBurnWarning.classList.add('hidden');
-    }
-
-    if (data.note_content) {
-      readyNoteContentBox.classList.remove('hidden');
-      readyNoteText.textContent = data.note_content;
-    } else {
-      readyNoteContentBox.classList.add('hidden');
-    }
 
     // Scroll to download card smoothly
     downloadReadyCard.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // Execute Download (One-Click Download)
+  // Execute Download or View Note
   executeDownloadBtn.addEventListener('click', async () => {
     if (!activeLockerData) return;
 
@@ -652,32 +721,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Impossibile scaricare il file');
+        throw new Error(err.error || 'Impossibile completare la richiesta');
       }
 
-      // Convert response stream to download
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = activeLockerData.filename || 'razzo_file.bin';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+      if (activeLockerData.is_note) {
+        // Visualizza la nota di testo direttamente anziché scaricare il file!
+        const noteText = await res.text();
+        lastViewedNoteText = noteText;
+        readyNoteText.textContent = noteText;
+        readyNoteContentBox.classList.remove('hidden');
 
-      showToast('Download avviato con successo!', 'success');
+        executeDownloadBtn.classList.add('hidden');
+        if (notePostViewActions) notePostViewActions.classList.remove('hidden');
 
-      if (activeLockerData.burn) {
-        showToast('🔥 File autodistrutto dal server!', 'info');
-        setTimeout(() => {
-          downloadReadyCard.classList.add('hidden');
-          pickupCodePart1.value = '';
-          pickupCodePart2.value = '';
-          pickupPinInput.value = '';
+        showToast('Nota di testo visualizzata con successo!', 'success');
+
+        if (activeLockerData.burn) {
+          if (readyNoteBurnedMsg) readyNoteBurnedMsg.classList.remove('hidden');
+          showToast('🔥 Nota visualizzata e autodistrutta dal server!', 'info');
+          // Manteniamo la nota a schermo per consentire all'utente di leggerla o copiarla con calma!
           activeLockerData = null;
-        }, 2000);
+        }
+
+        readyNoteContentBox.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        // Convert response stream to download for regular files
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = activeLockerData.filename || 'razzo_file.bin';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+
+        showToast('Download avviato con successo!', 'success');
+
+        if (activeLockerData.burn) {
+          showToast('🔥 File autodistrutto dal server!', 'info');
+          setTimeout(() => {
+            downloadReadyCard.classList.add('hidden');
+            pickupCodePart1.value = '';
+            pickupCodePart2.value = '';
+            pickupPinInput.value = '';
+            activeLockerData = null;
+          }, 2000);
+        }
       }
 
     } catch (err) {
@@ -686,6 +777,43 @@ document.addEventListener('DOMContentLoaded', () => {
       executeDownloadBtn.disabled = false;
     }
   });
+
+  // Event listeners for note viewing actions
+  if (copyNoteBtn) {
+    copyNoteBtn.addEventListener('click', () => {
+      if (readyNoteText && readyNoteText.textContent) {
+        copyToClipboard(readyNoteText.textContent, () => showToast('Testo della nota copiato negli appunti!', 'success'));
+      }
+    });
+  }
+
+  if (closeNoteViewBtn) {
+    closeNoteViewBtn.addEventListener('click', () => {
+      downloadReadyCard.classList.add('hidden');
+      pickupCodePart1.value = '';
+      pickupCodePart2.value = '';
+      pickupPinInput.value = '';
+      activeLockerData = null;
+      lastViewedNoteText = '';
+    });
+  }
+
+  if (downloadNoteAsFileBtn) {
+    downloadNoteAsFileBtn.addEventListener('click', () => {
+      if (!lastViewedNoteText) return;
+      const blob = new Blob([lastViewedNoteText], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'messaggio_razzo.txt';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      showToast('File di testo salvato con successo!', 'success');
+    });
+  }
 
   // --- GESTIONE PARAMETRI URL SENZA SWITCH FORZATO ---
   const urlParams = new URLSearchParams(window.location.search);

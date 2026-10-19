@@ -67,6 +67,8 @@ struct LockerItem {
     available_from: Option<DateTime<Utc>>,
     burn_after_reading: bool,
     failed_attempts: usize,
+    #[serde(default)]
+    is_note: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -109,6 +111,7 @@ struct LockerCheckResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     available_from: Option<DateTime<Utc>>,
     burn: bool,
+    is_note: bool,
 }
 
 #[derive(Deserialize)]
@@ -165,6 +168,7 @@ struct AdminLockerView {
     burn_after_reading: bool,
     failed_attempts: usize,
     has_pin: bool,
+    pub is_note: bool,
 }
 
 fn hash_pin(pin: &str, salt: &str) -> String {
@@ -487,6 +491,7 @@ async fn handle_deposit(
     let mut file_data = None;
     let mut original_filename = String::from("file.bin");
     let mut content_type = String::from("application/octet-stream");
+    let mut is_note = false;
 
     // Process multipart fields
     while let Ok(Some(mut field)) = multipart.next_field().await {
@@ -526,6 +531,11 @@ async fn handle_deposit(
                             available_from_opt = Some(dt.with_timezone(&Utc));
                         }
                     }
+                }
+            }
+            "is_note" => {
+                if let Ok(text) = field.text().await {
+                    is_note = text.trim().to_lowercase() == "true";
                 }
             }
             "file" => {
@@ -592,6 +602,10 @@ async fn handle_deposit(
             ));
         }
     };
+
+    if !is_note && original_filename.starts_with("messaggio_") && original_filename.ends_with(".txt") {
+        is_note = true;
+    }
 
     // Check if locker is already occupied and active
     {
@@ -672,6 +686,7 @@ async fn handle_deposit(
         available_from: available_from_opt,
         burn_after_reading: burn,
         failed_attempts: 0,
+        is_note,
     };
 
     // Insert into state and persist
@@ -715,6 +730,7 @@ async fn handle_deposit(
             "type": "file_deposited",
             "filename": original_filename,
             "size": data.len(),
+            "is_note": is_note,
         })
         .to_string(),
     )
@@ -724,7 +740,8 @@ async fn handle_deposit(
         "success": true,
         "code": code,
         "filename": original_filename,
-        "expires_at": expires_at
+        "expires_at": expires_at,
+        "is_note": is_note,
     }))
     .into_response())
 }
@@ -893,6 +910,7 @@ async fn handle_check(
         expires_at: item.expires_at,
         available_from: item.available_from,
         burn: item.burn_after_reading,
+        is_note: item.is_note || (item.filename.starts_with("messaggio_") && item.filename.ends_with(".txt")),
     }))
 }
 
@@ -1029,10 +1047,15 @@ async fn handle_pickup(
     );
     headers_resp.insert(
         header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", item.filename)
-            .parse()
-            .unwrap(),
+        if item.is_note {
+            format!("inline; filename=\"{}\"", item.filename).parse().unwrap()
+        } else {
+            format!("attachment; filename=\"{}\"", item.filename).parse().unwrap()
+        },
     );
+    if item.is_note {
+        headers_resp.insert("x-is-note", "true".parse().unwrap());
+    }
 
     // If burn after reading: schedule disk file deletion immediately after
     if should_burn {
@@ -1250,6 +1273,7 @@ async fn handle_admin_lockers(
             burn_after_reading: item.burn_after_reading,
             failed_attempts: item.failed_attempts,
             has_pin: item.pin_hash.is_some(),
+            is_note: item.is_note,
         })
         .collect();
 

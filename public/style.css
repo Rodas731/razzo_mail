@@ -910,6 +910,11 @@ body {
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
 }
 
+.btn-primary-action.btn-view-note {
+  background: linear-gradient(135deg, #00d2ff 0%, #0284c7 100%);
+  box-shadow: 0 6px 20px rgba(0, 210, 255, 0.35);
+}
+
 .btn-inner {
   display: flex;
   align-items: center;
@@ -1241,8 +1246,18 @@ body {
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 16px;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn 250ms ease-out;
+}
+
+.note-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .note-box-label {
@@ -1250,14 +1265,65 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   color: var(--accent-cyan);
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.note-content-box p {
-  font-size: 0.95rem;
+.btn-copy-note {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.btn-copy-note:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--text-main);
+  border-color: var(--accent-cyan);
+}
+
+.note-text-body {
+  font-size: 0.98rem;
+  line-height: 1.6;
   color: var(--text-main);
   white-space: pre-wrap;
   word-break: break-word;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  max-height: 350px;
+  overflow-y: auto;
+  font-family: inherit;
+}
+
+.note-burned-indicator {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-rocket);
+  background: rgba(255, 94, 54, 0.12);
+  border: 1px dashed rgba(255, 94, 54, 0.4);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.note-post-view-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
 
 /* Remember on device checkbox */
