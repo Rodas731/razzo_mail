@@ -373,8 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let fileToUpload = selectedFile;
 
-    // Check if sending text note
-    const isSendingNote = !fileToUpload && isNoteMode && textNoteInput.value.trim().length > 0;
+    // Check if sending text note (either in note mode or text has been typed into the textarea and no file selected)
+    const isSendingNote = !fileToUpload && textNoteInput.value.trim().length > 0;
     if (isSendingNote) {
       const noteContent = textNoteInput.value.trim();
       const blob = new Blob([noteContent], { type: 'text/plain;charset=utf-8' });
@@ -624,7 +624,11 @@ document.addEventListener('DOMContentLoaded', () => {
     waitingReceiverCard.classList.add('hidden');
     downloadReadyCard.classList.remove('hidden');
 
-    const isNote = Boolean(data.is_note || (data.filename && data.filename.startsWith('messaggio_') && data.filename.endsWith('.txt')));
+    const isNote = Boolean(
+      data.is_note === true ||
+      data.is_note === 'true' ||
+      (data.filename && data.filename.startsWith('messaggio_'))
+    );
     data.is_note = isNote;
 
     // Reset previous note state if any
@@ -655,13 +659,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       executeDownloadBtn.className = 'btn-primary-action btn-view-note';
-      executeDownloadBtnInner.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        <span>VISUALIZZA NOTA</span>
-      `;
+      const inner = executeDownloadBtn.querySelector('.btn-inner') || executeDownloadBtn;
+      if (inner) {
+        inner.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>VISUALIZZA NOTA</span>
+        `;
+      }
     } else {
       if (readyBadgeIcon) {
         readyBadgeIcon.innerHTML = `
@@ -686,14 +693,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       executeDownloadBtn.className = 'btn-primary-action btn-download';
-      executeDownloadBtnInner.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        <span>SCARICA SUBITO</span>
-      `;
+      const inner = executeDownloadBtn.querySelector('.btn-inner') || executeDownloadBtn;
+      if (inner) {
+        inner.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>SCARICA SUBITO</span>
+        `;
+      }
     }
 
     const expMin = Math.max(1, Math.round((new Date(data.expires_at) - new Date()) / 60000));
@@ -857,7 +867,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- SERVICE WORKER (Installazione PWA su smartphone e desktop) ---
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(err => {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        registration.update();
+      }).catch(err => {
         console.warn('Service worker registration failed:', err);
       });
     });
