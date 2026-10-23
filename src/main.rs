@@ -44,6 +44,7 @@ const CODE_CHARS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
 struct AppState {
     lockers: Arc<RwLock<HashMap<String, LockerItem>>>,
     channels: Arc<RwLock<HashMap<String, broadcast::Sender<String>>>>,
+    chat_rooms: Arc<RwLock<HashMap<String, Vec<ChatMessageItem>>>>,
     storage_dir: PathBuf,
     metadata_file: PathBuf,
     audit_file: PathBuf,
@@ -127,6 +128,29 @@ struct ErrorResponse {
     status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     requires_pin: Option<bool>,
+}
+
+// Chat Requests & Responses
+#[derive(Clone, Serialize, Deserialize)]
+struct ChatMessageItem {
+    id: String,
+    sender_role: String,
+    sender_id: String,
+    text: String,
+    timestamp: DateTime<Utc>,
+}
+
+#[derive(Deserialize)]
+struct PostChatMessageRequest {
+    sender_role: Option<String>,
+    sender_id: Option<String>,
+    text: String,
+}
+
+#[derive(Serialize)]
+struct ChatRoomResponse {
+    code: String,
+    messages: Vec<ChatMessageItem>,
 }
 
 // Admin Requests & Responses
@@ -341,6 +365,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState {
         lockers: Arc::new(RwLock::new(initial_lockers)),
         channels: Arc::new(RwLock::new(HashMap::new())),
+        chat_rooms: Arc::new(RwLock::new(HashMap::new())),
         storage_dir: storage_dir.clone(),
         metadata_file: metadata_file.clone(),
         audit_file: audit_file.clone(),
@@ -369,6 +394,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/lockers/deposit", post(handle_deposit))
         .route("/api/lockers/check", post(handle_check))
         .route("/api/lockers/pickup", post(handle_pickup))
+        // Chat Routes (Real-time live conversation)
+        .route("/api/chat/{code}", get(handle_get_chat_messages))
+        .route("/api/chat/{code}/message", post(handle_post_chat_message))
+        .route("/api/chat/{code}/destroy", post(handle_destroy_chat))
         // Admin Routes
         .route("/api/admin/login", post(handle_admin_login))
         .route("/api/admin/stats", get(handle_admin_stats))
@@ -458,6 +487,18 @@ async fn sweep_expired_lockers(state: &AppState) {
 
     drop(lockers);
     save_lockers_to_disk(state).await;
+
+    // Pulizia periodica chat rooms inattive da più di 2 ore
+    {
+        let mut chat_rooms = state.chat_rooms.write().await;
+        chat_rooms.retain(|_code, msgs| {
+            if let Some(last_msg) = msgs.last() {
+                (now - last_msg.timestamp).num_hours() < 2
+            } else {
+                false
+            }
+        });
+    }
 }
 
 // Handler: Generate random 8-character mixed code
@@ -684,7 +725,7 @@ async fn handle_deposit(
         created_at: now,
         expires_at,
         available_from: available_from_opt,
-        burn_after_reading: burn,
+        burn_after_reading: burn || is_note,
         failed_attempts: 0,
         is_note,
     };
@@ -695,6 +736,20 @@ async fn handle_deposit(
         lockers.insert(code.clone(), locker_item);
     }
     save_lockers_to_disk(&state).await;
+
+    // Se è una nota/messaggio, inizializza la chat room live con il primo messaggio in RAM
+    if is_note {
+        let note_text = String::from_utf8_lossy(&data).to_string();
+        let mut rooms = state.chat_rooms.write().await;
+        let initial_msg = ChatMessageItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            sender_role: "sender".to_string(),
+            sender_id: "sender".to_string(),
+            text: note_text,
+            timestamp: now,
+        };
+        rooms.insert(code.clone(), vec![initial_msg]);
+    }
 
     // Record audit event
     log_audit_event(
@@ -909,7 +964,7 @@ async fn handle_check(
         content_type: item.content_type.clone(),
         expires_at: item.expires_at,
         available_from: item.available_from,
-        burn: item.burn_after_reading,
+        burn: item.burn_after_reading || item.is_note,
         is_note: item.is_note || (item.filename.starts_with("messaggio_") && item.filename.ends_with(".txt")),
     }))
 }
@@ -974,7 +1029,7 @@ async fn handle_pickup(
             }
         }
 
-        let burn = item.burn_after_reading;
+        let burn = item.burn_after_reading || item.is_note;
         if burn {
             lockers.remove(&code);
         }
@@ -1091,11 +1146,11 @@ async fn handle_ws_socket(mut socket: WebSocket, state: AppState, code: String, 
         let mut channels = state.channels.write().await;
         channels
             .entry(code.clone())
-            .or_insert_with(|| broadcast::channel(16).0)
+            .or_insert_with(|| broadcast::channel(32).0)
             .subscribe()
     };
 
-    // Forward broadcast events to WebSocket client
+    // Forward broadcast events to WebSocket client AND handle incoming client messages
     loop {
         tokio::select! {
             result = rx.recv() => {
@@ -1111,6 +1166,37 @@ async fn handle_ws_socket(mut socket: WebSocket, state: AppState, code: String, 
             }
             client_msg = socket.recv() => {
                 match client_msg {
+                    Some(Ok(Message::Text(text))) => {
+                        // Supporta invio messaggio di chat via WebSocket
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if val.get("type").and_then(|v| v.as_str()) == Some("chat_message") {
+                                if let Some(msg_text) = val.get("text").and_then(|v| v.as_str()) {
+                                    let trimmed = msg_text.trim();
+                                    if !trimmed.is_empty() {
+                                        let sender_role = val.get("sender_role").and_then(|v| v.as_str()).unwrap_or("user").to_string();
+                                        let sender_id = val.get("sender_id").and_then(|v| v.as_str()).unwrap_or("anon").to_string();
+                                        let chat_item = ChatMessageItem {
+                                            id: uuid::Uuid::new_v4().to_string(),
+                                            sender_role,
+                                            sender_id,
+                                            text: trimmed.to_string(),
+                                            timestamp: Utc::now(),
+                                        };
+                                        {
+                                            let mut rooms = state.chat_rooms.write().await;
+                                            rooms.entry(code.clone()).or_default().push(chat_item.clone());
+                                        }
+                                        let ws_payload = serde_json::json!({
+                                            "type": "chat_message",
+                                            "code": code,
+                                            "message": chat_item,
+                                        });
+                                        notify_channel(&state, &code, ws_payload.to_string()).await;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Some(Ok(Message::Close(_))) | None => break,
                     _ => {}
                 }
@@ -1124,6 +1210,95 @@ async fn notify_channel(state: &AppState, code: &str, message: String) {
     if let Some(sender) = channels.get(code) {
         let _ = sender.send(message);
     }
+}
+
+// ----------------------------------------------------
+// Chat Room API Handlers (Conversazione Effimera Live)
+// ----------------------------------------------------
+
+async fn handle_get_chat_messages(
+    Path(raw_code): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<ChatRoomResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let code = sanitize_code(&raw_code).unwrap_or(raw_code);
+    let rooms = state.chat_rooms.read().await;
+    let messages = rooms.get(&code).cloned().unwrap_or_default();
+    Ok(Json(ChatRoomResponse { code, messages }))
+}
+
+async fn handle_post_chat_message(
+    Path(raw_code): Path<String>,
+    State(state): State<AppState>,
+    Json(payload): Json<PostChatMessageRequest>,
+) -> Result<Json<ChatMessageItem>, (StatusCode, Json<ErrorResponse>)> {
+    let code = sanitize_code(&raw_code).unwrap_or(raw_code);
+    let trimmed = payload.text.trim();
+    if trimmed.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Il messaggio non può essere vuoto".to_string(),
+                status: None,
+                requires_pin: None,
+            }),
+        ));
+    }
+
+    let msg = ChatMessageItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        sender_role: payload.sender_role.unwrap_or_else(|| "user".to_string()),
+        sender_id: payload.sender_id.unwrap_or_else(|| "anon".to_string()),
+        text: trimmed.to_string(),
+        timestamp: Utc::now(),
+    };
+
+    {
+        let mut rooms = state.chat_rooms.write().await;
+        rooms.entry(code.clone()).or_default().push(msg.clone());
+    }
+
+    // Notifica broadcast a tutti i partecipanti via WebSocket
+    let ws_payload = serde_json::json!({
+        "type": "chat_message",
+        "code": code,
+        "message": msg,
+    });
+    notify_channel(&state, &code, ws_payload.to_string()).await;
+
+    Ok(Json(msg))
+}
+
+async fn handle_destroy_chat(
+    Path(raw_code): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let code = sanitize_code(&raw_code).unwrap_or(raw_code);
+    {
+        let mut rooms = state.chat_rooms.write().await;
+        rooms.remove(&code);
+    }
+    {
+        let mut lockers = state.lockers.write().await;
+        if let Some(item) = lockers.remove(&code) {
+            let fpath = item.file_path.clone();
+            tokio::spawn(async move {
+                let _ = fs::remove_file(&fpath).await;
+            });
+        }
+    }
+    save_lockers_to_disk(&state).await;
+
+    // Broadcast distruzione chat
+    let ws_payload = serde_json::json!({
+        "type": "chat_destroyed",
+        "code": code,
+    });
+    notify_channel(&state, &code, ws_payload.to_string()).await;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Chat autodistrutta con successo per tutti i partecipanti"
+    })))
 }
 
 // ----------------------------------------------------

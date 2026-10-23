@@ -20,8 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileSizeDisplay = document.getElementById('fileSizeDisplay');
   const removeFileBtn = document.getElementById('removeFileBtn');
 
-  const toggleNoteModeBtn = document.getElementById('toggleNoteModeBtn');
-  const textNoteArea = document.getElementById('textNoteArea');
+  const modeFileBtn = document.getElementById('modeFileBtn');
+  const modeTextBtn = document.getElementById('modeTextBtn');
+  const fileDepositContainer = document.getElementById('fileDepositContainer');
+  const textNoteContainer = document.getElementById('textNoteContainer');
   const textNoteInput = document.getElementById('textNoteInput');
 
   const regenCodeBtn = document.getElementById('regenCodeBtn');
@@ -77,6 +79,61 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeNoteViewBtn = document.getElementById('closeNoteViewBtn');
   const downloadNoteAsFileBtn = document.getElementById('downloadNoteAsFileBtn');
 
+  // Chat Window Elements
+  const chatWindowCard = document.getElementById('chatWindowCard');
+  const chatLockerBadge = document.getElementById('chatLockerBadge');
+  const chatStatusText = document.getElementById('chatStatusText');
+  const chatBubblesList = document.getElementById('chatBubblesList');
+  const chatReplyForm = document.getElementById('chatReplyForm');
+  const chatReplyInput = document.getElementById('chatReplyInput');
+  const chatReplySendBtn = document.getElementById('chatReplySendBtn');
+  const chatTopCloseBtn = document.getElementById('chatTopCloseBtn');
+  const chatBottomCloseBtn = document.getElementById('chatBottomCloseBtn');
+  const chatCopyBtn = document.getElementById('chatCopyBtn');
+  const chatSaveEncryptedBtn = document.getElementById('chatSaveEncryptedBtn');
+  const chatDestroyBtn = document.getElementById('chatDestroyBtn');
+  const chatLiveEntryBox = document.getElementById('chatLiveEntryBox');
+  const enterChatAfterDepositBtn = document.getElementById('enterChatAfterDepositBtn');
+
+  // Stato Chat Live Real-Time
+  let activeChatCode = null;
+  let myChatRole = 'receiver'; // 'sender' | 'receiver'
+  let myChatId = 'user_' + Math.random().toString(36).substring(2, 9);
+  let activeChatMessages = [];
+
+  // Modals: Save Encrypted
+  const saveEncryptedModal = document.getElementById('saveEncryptedModal');
+  const closeSaveEncryptedModalBtn = document.getElementById('closeSaveEncryptedModalBtn');
+  const cancelSaveEncryptedBtn = document.getElementById('cancelSaveEncryptedBtn');
+  const confirmSaveEncryptedBtn = document.getElementById('confirmSaveEncryptedBtn');
+  const savePinInput = document.getElementById('savePinInput');
+  const toggleSavePinEyeBtn = document.getElementById('toggleSavePinEyeBtn');
+
+  // Modals: Vault & Decrypt
+  const openVaultBtn = document.getElementById('openVaultBtn');
+  const vaultModal = document.getElementById('vaultModal');
+  const closeVaultModalBtn = document.getElementById('closeVaultModalBtn');
+  const vaultTabLocalBtn = document.getElementById('vaultTabLocalBtn');
+  const vaultTabFileBtn = document.getElementById('vaultTabFileBtn');
+  const vaultSectionLocal = document.getElementById('vaultSectionLocal');
+  const vaultSectionFile = document.getElementById('vaultSectionFile');
+  const vaultNotesList = document.getElementById('vaultNotesList');
+  const vaultEmptyNotice = document.getElementById('vaultEmptyNotice');
+  const vaultFileDropZone = document.getElementById('vaultFileDropZone');
+  const vaultFileInput = document.getElementById('vaultFileInput');
+  const vaultFileChosenBox = document.getElementById('vaultFileChosenBox');
+  const vaultChosenFileName = document.getElementById('vaultChosenFileName');
+  const vaultDecryptForm = document.getElementById('vaultDecryptForm');
+  const vaultUnlockPinInput = document.getElementById('vaultUnlockPinInput');
+  const toggleVaultPinEyeBtn = document.getElementById('toggleVaultPinEyeBtn');
+  const vaultDecryptBtn = document.getElementById('vaultDecryptBtn');
+
+  // Modals: Legal Disclaimer
+  const openLegalModalBtn = document.getElementById('openLegalModalBtn');
+  const legalModal = document.getElementById('legalModal');
+  const closeLegalModalBtn = document.getElementById('closeLegalModalBtn');
+  const agreeLegalModalBtn = document.getElementById('agreeLegalModalBtn');
+
   const toastContainer = document.getElementById('toastContainer');
 
   // State
@@ -86,6 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDepositedCode = '';
   let activeLockerData = null;
   let lastViewedNoteText = '';
+  let lastViewedCode = '';
+  let lastViewedPin = '';
+  let selectedVaultFilePayload = null;
+  let selectedVaultNoteItem = null;
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
@@ -144,10 +205,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const CODE_CHARS_REGEX = /[^a-zA-Z0-9!@$*+=_]/g;
 
   function setupCodeInputs(part1, part2) {
+    // Quando la prima o seconda casella riceve il focus, seleziona tutto il testo
+    part1.addEventListener('focus', () => {
+      part1.select();
+    });
+    part2.addEventListener('focus', () => {
+      part2.select();
+    });
+
+    // Se l'utente preme un tasto per scrivere nella prima casella:
+    // svuota immediatamente la seconda casella per garantire la digitazione continua degli 8 simboli senza dover cancellare
+    part1.addEventListener('keydown', (e) => {
+      if (!['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Control', 'Alt', 'Meta', 'Shift'].includes(e.key)) {
+        part2.value = '';
+      }
+    });
+
     part1.addEventListener('input', () => {
       part1.value = part1.value.replace(CODE_CHARS_REGEX, '');
+      // Svuota sempre la seconda casella se si digita nella prima
+      part2.value = '';
       if (part1.value.length >= 4) {
         part1.value = part1.value.slice(0, 4);
+        part2.value = '';
         part2.focus();
       }
     });
@@ -187,6 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (text.length > 4) {
             part2.value = text.slice(4, 8);
             part2.focus();
+          } else {
+            part2.value = '';
           }
         }
       });
@@ -324,36 +406,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- NOTE MODE TOGGLE ---
-  function toggleNoteMode() {
-    isNoteMode = !isNoteMode;
-    if (isNoteMode) {
-      textNoteArea.classList.remove('hidden');
-      toggleNoteModeBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        <span>Annulla nota di testo</span>
-      `;
-      textNoteInput.focus();
+  // --- DEPOSIT MODE SWITCH (FILE VS TEXT NOTE) ---
+  function setDepositMode(mode) {
+    if (mode === 'text') {
+      isNoteMode = true;
+      if (modeTextBtn) modeTextBtn.classList.add('active');
+      if (modeFileBtn) modeFileBtn.classList.remove('active');
+      if (fileDepositContainer) fileDepositContainer.classList.add('hidden');
+      if (textNoteContainer) textNoteContainer.classList.remove('hidden');
+      const innerSpan = sendDepositBtn ? sendDepositBtn.querySelector('.btn-inner span') || sendDepositBtn.querySelector('span:not(.btn-inner)') : null;
+      if (innerSpan) innerSpan.textContent = 'INVIA MESSAGGIO IN CHAT';
+      if (textNoteInput) textNoteInput.focus();
     } else {
-      textNoteArea.classList.add('hidden');
-      textNoteInput.value = '';
-      toggleNoteModeBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        <span>Oppure scrivi una cartolina / nota di testo</span>
-      `;
+      isNoteMode = false;
+      if (modeFileBtn) modeFileBtn.classList.add('active');
+      if (modeTextBtn) modeTextBtn.classList.remove('active');
+      if (fileDepositContainer) fileDepositContainer.classList.remove('hidden');
+      if (textNoteContainer) textNoteContainer.classList.add('hidden');
+      const innerSpan = sendDepositBtn ? sendDepositBtn.querySelector('.btn-inner span') || sendDepositBtn.querySelector('span:not(.btn-inner)') : null;
+      if (innerSpan) innerSpan.textContent = 'INVIA FILE NEL LOCKER';
     }
   }
 
-  toggleNoteModeBtn.addEventListener('click', toggleNoteMode);
+  if (modeFileBtn) modeFileBtn.addEventListener('click', () => setDepositMode('file'));
+  if (modeTextBtn) modeTextBtn.addEventListener('click', () => setDepositMode('text'));
 
   // --- ONE-CLICK SEND / DEPOSIT ---
   sendDepositBtn.addEventListener('click', async () => {
-    const p1 = depositCodePart1.value.trim();
-    const p2 = depositCodePart2.value.trim();
+    let p1 = depositCodePart1.value.trim();
+    let p2 = depositCodePart2.value.trim();
 
+    // Se per qualsiasi motivo il codice è incompleto, autogeneralo subito senza bloccare l'utente!
     if (p1.length !== 4 || p2.length !== 4) {
-      showToast('Inserisci un codice valido di due gruppi da 4 caratteri (es. K8$m-2!pX)', 'error');
-      return;
+      fallbackRandomCode();
+      p1 = depositCodePart1.value.trim();
+      p2 = depositCodePart2.value.trim();
     }
 
     const lockerCode = `${p1}-${p2}`;
@@ -372,17 +459,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let fileToUpload = selectedFile;
+    const noteText = textNoteInput ? textNoteInput.value.trim() : '';
 
-    // Check if sending text note (either in note mode or text has been typed into the textarea and no file selected)
-    const isSendingNote = !fileToUpload && textNoteInput.value.trim().length > 0;
+    // Invio nota di testo se la modalità testo è attiva oppure se l'utente ha inserito testo
+    const isSendingNote = isNoteMode || (!fileToUpload && noteText.length > 0);
     if (isSendingNote) {
-      const noteContent = textNoteInput.value.trim();
-      const blob = new Blob([noteContent], { type: 'text/plain;charset=utf-8' });
+      if (!noteText) {
+        showToast('Scrivi un messaggio di testo prima di inviare!', 'error');
+        if (textNoteInput) textNoteInput.focus();
+        return;
+      }
+      const blob = new Blob([noteText], { type: 'text/plain;charset=utf-8' });
       fileToUpload = new File([blob], `messaggio_${lockerCode}.txt`, { type: 'text/plain' });
     }
 
     if (!fileToUpload) {
-      showToast('Seleziona un file da inviare o scrivi una nota di testo', 'error');
+      showToast('Seleziona un file da inviare oppure scrivi un messaggio di testo!', 'error');
       return;
     }
 
@@ -407,10 +499,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       uploadProgressBar.style.width = '100%';
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        data = { error: 'Risposta del server non valida.' };
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Errore durante il deposito del file');
+        throw new Error(data.error || 'Errore durante il deposito del contenuto');
       }
 
       // Success! Show Result Card
@@ -419,13 +516,24 @@ document.addEventListener('DOMContentLoaded', () => {
       depositSuccessCard.classList.remove('hidden');
       successCodeDisplay.textContent = lockerCode;
 
-      showToast(isSendingNote ? 'Nota di testo depositata con successo!' : 'File depositato nel Locker con successo!', 'success');
-
-      // Start Real-Time WebSocket Listener for Sender
-      connectSenderWebSocket(lockerCode);
+      if (isSendingNote) {
+        showToast('Messaggio depositato nel Locker! Puoi entrare nella chat live.', 'success');
+        if (chatLiveEntryBox) chatLiveEntryBox.classList.remove('hidden');
+        if (senderRadarBox) senderRadarBox.classList.add('hidden');
+      } else {
+        showToast('File depositato nel Locker con successo!', 'success');
+        if (chatLiveEntryBox) chatLiveEntryBox.classList.add('hidden');
+        if (senderRadarBox) senderRadarBox.classList.remove('hidden');
+        // Start Real-Time WebSocket Listener for Sender file pickup
+        connectSenderWebSocket(lockerCode);
+      }
 
     } catch (err) {
-      showToast(err.message, 'error');
+      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+        showToast('Impossibile contattare il server. Assicurati che "Avvia Razzo Mail.bat" sia aperto.', 'error');
+      } else {
+        showToast(err.message, 'error');
+      }
     } finally {
       sendDepositBtn.disabled = false;
       setTimeout(() => { uploadProgressBar.style.width = '0%'; }, 400);
@@ -521,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedFile = null;
     fileInput.value = '';
     textNoteInput.value = '';
-    if (isNoteMode) toggleNoteMode();
+    setDepositMode('file');
     filePreviewCard.classList.add('hidden');
     dropPrompt.classList.remove('hidden');
     depositPinInput.value = '';
@@ -572,11 +680,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Locker found and unlocked!
       activeLockerData = { code, pin, ...data };
-      displayDownloadReady(activeLockerData);
+      const isNote = Boolean(
+        data.is_note === true ||
+        data.is_note === 'true' ||
+        (data.filename && data.filename.startsWith('messaggio_'))
+      );
 
       // Save locally if checked
       if (rememberLockerCheck.checked) {
         localStorage.setItem('razzo_last_locker', JSON.stringify({ code, pin }));
+      }
+
+      if (isNote) {
+        // Entra direttamente nella Chat Room bidirezionale in tempo reale!
+        await openLiveChat(code, 'receiver', pin);
+      } else {
+        displayDownloadReady(activeLockerData);
       }
 
     } catch (err) {
@@ -585,6 +704,187 @@ document.addEventListener('DOMContentLoaded', () => {
       checkAndPickupBtn.disabled = false;
     }
   });
+
+  // Listener ingresso rapido nella chat dal mittente
+  if (enterChatAfterDepositBtn) {
+    enterChatAfterDepositBtn.addEventListener('click', () => {
+      if (currentDepositedCode) {
+        openLiveChat(currentDepositedCode, 'sender');
+      }
+    });
+  }
+
+  // --- CHAT ROOM LIVE BIDIREZIONALE (CONTINUA & IN TEMPO REALE) ---
+  async function openLiveChat(code, role, pin = '') {
+    activeChatCode = code;
+    myChatRole = role;
+    lastViewedCode = code;
+    lastViewedPin = pin;
+    activeChatMessages = [];
+
+    // Nascondi altre viste
+    if (waitingReceiverCard) waitingReceiverCard.classList.add('hidden');
+    if (downloadReadyCard) downloadReadyCard.classList.add('hidden');
+    if (depositSuccessCard) depositSuccessCard.classList.add('hidden');
+    if (depositForm) depositForm.classList.add('hidden');
+
+    if (chatLockerBadge) chatLockerBadge.textContent = `#${code}`;
+    if (chatBubblesList) chatBubblesList.innerHTML = '';
+    chatWindowCard.classList.remove('hidden');
+    chatWindowCard.scrollIntoView({ behavior: 'smooth' });
+
+    // Connetti WebSocket dedicato per la stanza di chat
+    connectChatWebSocket(code);
+
+    // Carica messaggi esistenti da /api/chat/:code
+    try {
+      const res = await fetch(`/api/chat/${encodeURIComponent(code)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          data.messages.forEach(msg => appendChatMessage(msg));
+        }
+      }
+    } catch (e) {
+      console.warn('Errore recupero messaggi stanza chat', e);
+    }
+
+    if (chatReplyInput) {
+      setTimeout(() => chatReplyInput.focus(), 150);
+    }
+  }
+
+  function connectChatWebSocket(code) {
+    if (activeWs) {
+      try { activeWs.close(); } catch (_) {}
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/${encodeURIComponent(code)}`;
+
+    try {
+      activeWs = new WebSocket(wsUrl);
+
+      activeWs.onopen = () => {
+        if (chatStatusText) chatStatusText.textContent = '🟢 Connesso • Scambio in tempo reale';
+      };
+
+      activeWs.onclose = () => {
+        if (chatStatusText) chatStatusText.textContent = '⚪ Disconnesso (Riconnessione...)';
+      };
+
+      activeWs.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'chat_message' && payload.message) {
+            appendChatMessage(payload.message);
+          } else if (payload.type === 'chat_destroyed') {
+            showToast('🔥 La chat è stata distrutta dall\'interlocutore.', 'info');
+            closeChatWindow();
+          }
+        } catch (e) {
+          console.error('[WS] Errore parsing messaggio chat', e);
+        }
+      };
+    } catch (e) {
+      console.warn('[WS] Impossibile avviare socket chat', e);
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function appendChatMessage(msgItem) {
+    if (!msgItem || !msgItem.id) return;
+    if (activeChatMessages.some(m => m.id === msgItem.id)) return;
+    activeChatMessages.push(msgItem);
+
+    // Calcola se il messaggio appartiene all'utente corrente
+    const isMine = (msgItem.sender_id === myChatId) ||
+                   (myChatRole === 'sender' && msgItem.sender_role === 'sender' && msgItem.sender_id === 'sender') ||
+                   (myChatRole === 'receiver' && msgItem.sender_role === 'receiver');
+
+    const bubble = document.createElement('div');
+    bubble.className = isMine ? 'chat-bubble-outbound' : 'chat-bubble-inbound';
+
+    let authorLabel = isMine ? 'Tu' : (msgItem.sender_role === 'sender' ? 'Mittente' : 'Destinatario');
+    const timeStr = msgItem.timestamp
+      ? new Date(msgItem.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : 'Adesso';
+
+    const safeText = escapeHtml(msgItem.text);
+
+    bubble.innerHTML = `
+      <div class="chat-bubble-author">${authorLabel}</div>
+      <div class="chat-bubble-text">${safeText}</div>
+      <div class="chat-bubble-meta">
+        <span>${timeStr}</span>
+        <span class="chat-ticks">✓✓</span>
+      </div>
+    `;
+
+    if (chatBubblesList) {
+      chatBubblesList.appendChild(bubble);
+      const area = document.getElementById('chatMessagesArea');
+      if (area) {
+        area.scrollTop = area.scrollHeight;
+      }
+    }
+  }
+
+  // Invio messaggi continuo dalla chat reply bar
+  if (chatReplyForm) {
+    chatReplyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeChatCode) return;
+      const text = chatReplyInput.value.trim();
+      if (!text) return;
+
+      chatReplyInput.value = '';
+
+      const outgoingPayload = {
+        type: 'chat_message',
+        code: activeChatCode,
+        text: text,
+        sender_role: myChatRole,
+        sender_id: myChatId
+      };
+
+      // Invia via WebSocket per recapito istantaneo
+      if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+        activeWs.send(JSON.stringify(outgoingPayload));
+      }
+
+      // Invia anche via HTTP POST per memorizzazione e fallback
+      try {
+        const res = await fetch(`/api/chat/${encodeURIComponent(activeChatCode)}/message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            sender_role: myChatRole,
+            sender_id: myChatId
+          })
+        });
+        if (res.ok) {
+          const savedMsg = await res.json();
+          appendChatMessage(savedMsg);
+        }
+      } catch (err) {
+        console.error('Errore invio messaggio', err);
+        showToast('Errore durante l\'invio del messaggio', 'error');
+      }
+
+      if (chatReplyInput) chatReplyInput.focus();
+    });
+  }
 
   function listenForSenderRealtime(code, pin) {
     if (activeWs) activeWs.close();
@@ -600,18 +900,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (msg.type === 'file_deposited') {
           // File has arrived! Fetch details and display
           waitingReceiverCard.classList.add('hidden');
-          showToast(msg.is_note ? '🚀 Il mittente ha inviato una nota di testo!' : '🚀 Il mittente ha appena depositato il file!', 'success');
+          const isNote = Boolean(msg.is_note);
 
-          // Trigger check
-          const res = await fetch('/api/lockers/check', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, pin })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            activeLockerData = { code, pin, ...data };
-            displayDownloadReady(activeLockerData);
+          if (isNote) {
+            showToast('🚀 Il mittente ha inviato il messaggio!', 'success');
+            await openLiveChat(code, 'receiver', pin);
+          } else {
+            showToast('🚀 Il mittente ha appena depositato il file!', 'success');
+            const res = await fetch('/api/lockers/check', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code, pin })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              activeLockerData = { code, pin, ...data };
+              displayDownloadReady(activeLockerData);
+            }
           }
         }
       };
@@ -622,101 +927,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function displayDownloadReady(data) {
     waitingReceiverCard.classList.add('hidden');
+    chatWindowCard.classList.add('hidden');
     downloadReadyCard.classList.remove('hidden');
 
-    const isNote = Boolean(
-      data.is_note === true ||
-      data.is_note === 'true' ||
-      (data.filename && data.filename.startsWith('messaggio_'))
-    );
-    data.is_note = isNote;
+    if (readyBadgeIcon) {
+      readyBadgeIcon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      `;
+    }
+    if (readyBadgeText) readyBadgeText.textContent = 'FILE PRONTO AL RITIRO';
+    readyFileName.textContent = data.filename || 'File allegato';
+    readyFileSize.textContent = formatBytes(data.size || 0);
 
-    // Reset previous note state if any
-    readyNoteContentBox.classList.add('hidden');
-    if (readyNoteBurnedMsg) readyNoteBurnedMsg.classList.add('hidden');
-    readyNoteText.textContent = '';
-    executeDownloadBtn.classList.remove('hidden');
-    if (notePostViewActions) notePostViewActions.classList.add('hidden');
-
-    if (isNote) {
-      if (readyBadgeIcon) {
-        readyBadgeIcon.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-        `;
-      }
-      if (readyBadgeText) readyBadgeText.textContent = 'NOTA DI TESTO PRONTA';
-      readyFileName.textContent = 'Nota di testo / Cartolina';
-      readyFileSize.textContent = formatBytes(data.size || 0);
-
-      if (data.burn) {
-        readyBurnWarning.textContent = '🔥 Questa nota si autodistruggerà subito dopo la visualizzazione';
-        readyBurnWarning.classList.remove('hidden');
-      } else {
-        readyBurnWarning.classList.add('hidden');
-      }
-
-      executeDownloadBtn.className = 'btn-primary-action btn-view-note';
-      const inner = executeDownloadBtn.querySelector('.btn-inner') || executeDownloadBtn;
-      if (inner) {
-        inner.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          <span>VISUALIZZA NOTA</span>
-        `;
-      }
+    if (data.burn) {
+      readyBurnWarning.textContent = '🔥 Questo file si autodistruggerà subito dopo il download';
+      readyBurnWarning.classList.remove('hidden');
     } else {
-      if (readyBadgeIcon) {
-        readyBadgeIcon.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
-          </svg>
-        `;
-      }
-      if (readyBadgeText) readyBadgeText.textContent = 'FILE PRONTO AL RITIRO';
-      readyFileName.textContent = data.filename || 'File allegato';
-      readyFileSize.textContent = formatBytes(data.size || 0);
+      readyBurnWarning.classList.add('hidden');
+    }
 
-      if (data.burn) {
-        readyBurnWarning.textContent = '🔥 Questo file si autodistruggerà subito dopo il download';
-        readyBurnWarning.classList.remove('hidden');
-      } else {
-        readyBurnWarning.classList.add('hidden');
-      }
-
-      executeDownloadBtn.className = 'btn-primary-action btn-download';
-      const inner = executeDownloadBtn.querySelector('.btn-inner') || executeDownloadBtn;
-      if (inner) {
-        inner.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          <span>SCARICA SUBITO</span>
-        `;
-      }
+    executeDownloadBtn.className = 'btn-primary-action btn-download';
+    const inner = executeDownloadBtn.querySelector('.btn-inner') || executeDownloadBtn;
+    if (inner) {
+      inner.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>SCARICA SUBITO</span>
+      `;
     }
 
     const expMin = Math.max(1, Math.round((new Date(data.expires_at) - new Date()) / 60000));
     readyFileExpiry.textContent = `Scade tra ${expMin} min`;
-
-    // Scroll to download card smoothly
     downloadReadyCard.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // Execute Download or View Note
+  // Execute Download for regular files
   executeDownloadBtn.addEventListener('click', async () => {
     if (!activeLockerData) return;
-
     executeDownloadBtn.disabled = true;
 
     try {
@@ -734,53 +990,29 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(err.error || 'Impossibile completare la richiesta');
       }
 
-      if (activeLockerData.is_note) {
-        // Visualizza la nota di testo direttamente anziché scaricare il file!
-        const noteText = await res.text();
-        lastViewedNoteText = noteText;
-        readyNoteText.textContent = noteText;
-        readyNoteContentBox.classList.remove('hidden');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = activeLockerData.filename || 'razzo_file.bin';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
 
-        executeDownloadBtn.classList.add('hidden');
-        if (notePostViewActions) notePostViewActions.classList.remove('hidden');
+      showToast('Download avviato con successo!', 'success');
 
-        showToast('Nota di testo visualizzata con successo!', 'success');
-
-        if (activeLockerData.burn) {
-          if (readyNoteBurnedMsg) readyNoteBurnedMsg.classList.remove('hidden');
-          showToast('🔥 Nota visualizzata e autodistrutta dal server!', 'info');
-          // Manteniamo la nota a schermo per consentire all'utente di leggerla o copiarla con calma!
+      if (activeLockerData.burn) {
+        showToast('🔥 File autodistrutto dal server!', 'info');
+        setTimeout(() => {
+          downloadReadyCard.classList.add('hidden');
+          pickupCodePart1.value = '';
+          pickupCodePart2.value = '';
+          pickupPinInput.value = '';
           activeLockerData = null;
-        }
-
-        readyNoteContentBox.scrollIntoView({ behavior: 'smooth' });
-      } else {
-        // Convert response stream to download for regular files
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = activeLockerData.filename || 'razzo_file.bin';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-
-        showToast('Download avviato con successo!', 'success');
-
-        if (activeLockerData.burn) {
-          showToast('🔥 File autodistrutto dal server!', 'info');
-          setTimeout(() => {
-            downloadReadyCard.classList.add('hidden');
-            pickupCodePart1.value = '';
-            pickupCodePart2.value = '';
-            pickupPinInput.value = '';
-            activeLockerData = null;
-          }, 2000);
-        }
+        }, 2000);
       }
-
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -788,40 +1020,454 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Event listeners for note viewing actions
-  if (copyNoteBtn) {
-    copyNoteBtn.addEventListener('click', () => {
-      if (readyNoteText && readyNoteText.textContent) {
-        copyToClipboard(readyNoteText.textContent, () => showToast('Testo della nota copiato negli appunti!', 'success'));
+  // --- AZIONI CHAT WINDOW ---
+  if (chatCopyBtn) {
+    chatCopyBtn.addEventListener('click', () => {
+      if (!activeChatMessages || activeChatMessages.length === 0) {
+        showToast('Nessun messaggio presente nella chat', 'info');
+        return;
+      }
+      const transcript = activeChatMessages.map(m => {
+        const t = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const who = (m.sender_id === myChatId) ? 'Tu' : (m.sender_role === 'sender' ? 'Mittente' : 'Destinatario');
+        return `[${t}] ${who}: ${m.text}`;
+      }).join('\n');
+
+      copyToClipboard(transcript, () => showToast('Conversazione copiata negli appunti!', 'success'));
+    });
+  }
+
+  if (chatSaveEncryptedBtn) {
+    chatSaveEncryptedBtn.addEventListener('click', () => {
+      if (!activeChatMessages || activeChatMessages.length === 0) {
+        showToast('Nessun messaggio da salvare', 'error');
+        return;
+      }
+      const transcript = activeChatMessages.map(m => {
+        const t = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const who = (m.sender_id === myChatId) ? 'Tu' : (m.sender_role === 'sender' ? 'Mittente' : 'Destinatario');
+        return `[${t}] ${who}: ${m.text}`;
+      }).join('\n');
+
+      lastViewedNoteText = transcript;
+      if (savePinInput) savePinInput.value = lastViewedPin || '';
+      saveEncryptedModal.classList.remove('hidden');
+      if (savePinInput) savePinInput.focus();
+    });
+  }
+
+  if (chatDestroyBtn) {
+    chatDestroyBtn.addEventListener('click', async () => {
+      if (!activeChatCode) return;
+      if (!confirm('Vuoi davvero autodistruggere questa chat per entrambi? Tutti i messaggi verranno eliminati istantaneamente per sempre.')) {
+        return;
+      }
+      try {
+        await fetch(`/api/chat/${encodeURIComponent(activeChatCode)}/destroy`, { method: 'POST' });
+        showToast('💥 Chat autodistrutta con successo!', 'success');
+        closeChatWindow();
+      } catch (e) {
+        showToast('Errore durante la distruzione della chat', 'error');
       }
     });
   }
 
-  if (closeNoteViewBtn) {
-    closeNoteViewBtn.addEventListener('click', () => {
-      downloadReadyCard.classList.add('hidden');
-      pickupCodePart1.value = '';
-      pickupCodePart2.value = '';
-      pickupPinInput.value = '';
-      activeLockerData = null;
-      lastViewedNoteText = '';
+  function closeChatWindow() {
+    chatWindowCard.classList.add('hidden');
+    pickupCodePart1.value = '';
+    pickupCodePart2.value = '';
+    pickupPinInput.value = '';
+    activeLockerData = null;
+    activeChatCode = null;
+    activeChatMessages = [];
+    if (activeWs) {
+      try { activeWs.close(); } catch (_) {}
+    }
+  }
+
+  if (chatTopCloseBtn) chatTopCloseBtn.addEventListener('click', closeChatWindow);
+  if (chatBottomCloseBtn) chatBottomCloseBtn.addEventListener('click', closeChatWindow);
+
+  // --- CRITTOGRAFIA CON PIN (AES-256-GCM + PBKDF2) ---
+  async function deriveKeyFromPin(pin, saltBytes) {
+    if (window.crypto && window.crypto.subtle) {
+      const enc = new TextEncoder();
+      const baseKey = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(pin),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+      );
+      return await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: saltBytes,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+    return null;
+  }
+
+  async function encryptNoteWithPin(text, pin) {
+    if (window.crypto && window.crypto.subtle) {
+      const enc = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveKeyFromPin(pin, salt);
+      const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        enc.encode(text)
+      );
+      return {
+        v: 1,
+        app: 'RazzoMail',
+        cipher: 'AES-GCM-256',
+        code: lastViewedCode || 'NOTE',
+        date: new Date().toISOString(),
+        salt: btoa(String.fromCharCode(...salt)),
+        iv: btoa(String.fromCharCode(...iv)),
+        ciphertext: btoa(String.fromCharCode(...new Uint8Array(encrypted)))
+      };
+    } else {
+      return fallbackEncrypt(text, pin);
+    }
+  }
+
+  async function decryptNoteWithPin(payload, pin) {
+    if (payload.cipher === 'AES-GCM-256' && window.crypto && window.crypto.subtle) {
+      const dec = new TextDecoder();
+      const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+      const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+      const ciphertext = Uint8Array.from(atob(payload.ciphertext), c => c.charCodeAt(0));
+      const key = await deriveKeyFromPin(pin, salt);
+      try {
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv },
+          key,
+          ciphertext
+        );
+        return dec.decode(decrypted);
+      } catch (e) {
+        throw new Error('PIN errato: decifratura non riuscita');
+      }
+    } else if (payload.cipher === 'FALLBACK-XOR') {
+      return fallbackDecrypt(payload, pin);
+    } else {
+      throw new Error('Formato crittografico o browser non supportato');
+    }
+  }
+
+  function fallbackEncrypt(text, pin) {
+    const salt = String(Date.now()) + Math.random().toString(36);
+    const keyStr = pin + salt;
+    let cipher = '';
+    for (let i = 0; i < text.length; i++) {
+      cipher += String.fromCharCode(text.charCodeAt(i) ^ keyStr.charCodeAt(i % keyStr.length));
+    }
+    return {
+      v: 1,
+      app: 'RazzoMail',
+      cipher: 'FALLBACK-XOR',
+      code: lastViewedCode || 'NOTE',
+      date: new Date().toISOString(),
+      salt: btoa(salt),
+      ciphertext: btoa(unescape(encodeURIComponent(cipher)))
+    };
+  }
+
+  function fallbackDecrypt(payload, pin) {
+    const salt = atob(payload.salt);
+    const keyStr = pin + salt;
+    const cipher = decodeURIComponent(escape(atob(payload.ciphertext)));
+    let text = '';
+    for (let i = 0; i < cipher.length; i++) {
+      text += String.fromCharCode(cipher.charCodeAt(i) ^ keyStr.charCodeAt(i % keyStr.length));
+    }
+    return text;
+  }
+
+  // --- GESTIONE CASSAFORTE LOCALE (LOCALSTORAGE) ---
+  const VAULT_STORAGE_KEY = 'razzo_vault_notes';
+
+  function getStoredVaultNotes() {
+    try {
+      const raw = localStorage.getItem(VAULT_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveNoteToVault(payload) {
+    const notes = getStoredVaultNotes();
+    notes.unshift({
+      id: Date.now(),
+      code: payload.code || 'NOTE',
+      date: payload.date || new Date().toISOString(),
+      payload: payload
+    });
+    localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(notes));
+  }
+
+  function deleteNoteFromVault(id) {
+    let notes = getStoredVaultNotes();
+    notes = notes.filter(n => n.id !== id);
+    localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(notes));
+    renderVaultNotes();
+  }
+
+  function downloadEncryptedFile(payload, filename) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  }
+
+  function renderVaultNotes() {
+    const notes = getStoredVaultNotes();
+    vaultNotesList.innerHTML = '';
+    selectedVaultNoteItem = null;
+    vaultDecryptForm.classList.add('hidden');
+    vaultUnlockPinInput.value = '';
+
+    if (notes.length === 0) {
+      vaultEmptyNotice.classList.remove('hidden');
+      return;
+    }
+
+    vaultEmptyNotice.classList.add('hidden');
+    notes.forEach(note => {
+      const item = document.createElement('div');
+      item.className = 'vault-note-item';
+      const formattedDate = new Date(note.date).toLocaleString([], {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      item.innerHTML = `
+        <div class="vault-note-info">
+          <span class="vault-note-title">Nota #${note.code}</span>
+          <span class="vault-note-date">${formattedDate} (Cifrata AES-256)</span>
+        </div>
+        <button type="button" class="btn-vault-delete" title="Elimina nota">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      `;
+
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-vault-delete')) {
+          e.stopPropagation();
+          deleteNoteFromVault(note.id);
+          return;
+        }
+        document.querySelectorAll('.vault-note-item').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedVaultNoteItem = note.payload;
+        selectedVaultFilePayload = null;
+        vaultDecryptForm.classList.remove('hidden');
+        vaultUnlockPinInput.focus();
+      });
+
+      vaultNotesList.appendChild(item);
     });
   }
 
-  if (downloadNoteAsFileBtn) {
-    downloadNoteAsFileBtn.addEventListener('click', () => {
-      if (!lastViewedNoteText) return;
-      const blob = new Blob([lastViewedNoteText], { type: 'text/plain;charset=utf-8' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'messaggio_razzo.txt';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-      showToast('File di testo salvato con successo!', 'success');
+  // --- EVENTI MODAL: SALVA CIFRATO ---
+  if (confirmSaveEncryptedBtn) {
+    confirmSaveEncryptedBtn.addEventListener('click', async () => {
+      const pin = savePinInput.value.trim();
+      if (!pin) {
+        showToast('Inserisci un PIN per proteggere la nota', 'error');
+        savePinInput.focus();
+        return;
+      }
+      if (!lastViewedNoteText) {
+        showToast('Nessun testo da salvare', 'error');
+        return;
+      }
+
+      confirmSaveEncryptedBtn.disabled = true;
+      try {
+        const encrypted = await encryptNoteWithPin(lastViewedNoteText, pin);
+        const destType = document.querySelector('input[name="saveDestType"]:checked')?.value || 'vault';
+
+        if (destType === 'vault') {
+          saveNoteToVault(encrypted);
+          showToast('Nota salvata nella Cassaforte protetta da PIN!', 'success');
+        } else {
+          downloadEncryptedFile(encrypted, `nota_cifrata_${lastViewedCode || 'segreta'}.razzo`);
+          showToast('File cifrato .razzo scaricato sul dispositivo!', 'success');
+        }
+        saveEncryptedModal.classList.add('hidden');
+      } catch (e) {
+        showToast('Errore durante la cifratura: ' + e.message, 'error');
+      } finally {
+        confirmSaveEncryptedBtn.disabled = false;
+      }
+    });
+  }
+
+  if (closeSaveEncryptedModalBtn) closeSaveEncryptedModalBtn.addEventListener('click', () => saveEncryptedModal.classList.add('hidden'));
+  if (cancelSaveEncryptedBtn) cancelSaveEncryptedBtn.addEventListener('click', () => saveEncryptedModal.classList.add('hidden'));
+
+  if (toggleSavePinEyeBtn) {
+    toggleSavePinEyeBtn.addEventListener('click', () => {
+      savePinInput.type = savePinInput.type === 'password' ? 'text' : 'password';
+    });
+  }
+
+  // --- EVENTI MODAL: CASSAFORTE & DECIFRATURA ---
+  if (openVaultBtn) {
+    openVaultBtn.addEventListener('click', () => {
+      renderVaultNotes();
+      vaultModal.classList.remove('hidden');
+    });
+  }
+
+  if (closeVaultModalBtn) {
+    closeVaultModalBtn.addEventListener('click', () => {
+      vaultModal.classList.add('hidden');
+    });
+  }
+
+  if (vaultTabLocalBtn && vaultTabFileBtn) {
+    vaultTabLocalBtn.addEventListener('click', () => {
+      vaultTabLocalBtn.classList.add('active');
+      vaultTabFileBtn.classList.remove('active');
+      vaultSectionLocal.classList.remove('hidden');
+      vaultSectionFile.classList.add('hidden');
+      selectedVaultFilePayload = null;
+      vaultDecryptForm.classList.add('hidden');
+    });
+
+    vaultTabFileBtn.addEventListener('click', () => {
+      vaultTabFileBtn.classList.add('active');
+      vaultTabLocalBtn.classList.remove('active');
+      vaultSectionFile.classList.remove('hidden');
+      vaultSectionLocal.classList.add('hidden');
+      selectedVaultNoteItem = null;
+      vaultDecryptForm.classList.add('hidden');
+    });
+  }
+
+  // Upload .razzo file
+  if (vaultFileDropZone && vaultFileInput) {
+    vaultFileDropZone.addEventListener('click', () => vaultFileInput.click());
+
+    vaultFileDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      vaultFileDropZone.style.borderColor = 'var(--accent-cyan)';
+    });
+
+    vaultFileDropZone.addEventListener('dragleave', () => {
+      vaultFileDropZone.style.borderColor = '';
+    });
+
+    vaultFileDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      vaultFileDropZone.style.borderColor = '';
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleVaultFileUpload(e.dataTransfer.files[0]);
+      }
+    });
+
+    vaultFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleVaultFileUpload(e.target.files[0]);
+      }
+    });
+  }
+
+  function handleVaultFileUpload(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!parsed.ciphertext || !parsed.salt) {
+          throw new Error('File crittografico non valido o non riconosciuto');
+        }
+        selectedVaultFilePayload = parsed;
+        selectedVaultNoteItem = null;
+        vaultChosenFileName.textContent = file.name;
+        vaultFileChosenBox.classList.remove('hidden');
+        vaultDecryptForm.classList.remove('hidden');
+        vaultUnlockPinInput.focus();
+        showToast('File .razzo caricato. Inserisci il PIN per decifrare.', 'info');
+      } catch (err) {
+        showToast('Impossibile leggere il file: formato non valido', 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  if (toggleVaultPinEyeBtn) {
+    toggleVaultPinEyeBtn.addEventListener('click', () => {
+      vaultUnlockPinInput.type = vaultUnlockPinInput.type === 'password' ? 'text' : 'password';
+    });
+  }
+
+  // Decifra nota da cassaforte o file
+  if (vaultDecryptBtn) {
+    vaultDecryptBtn.addEventListener('click', async () => {
+      const payload = selectedVaultNoteItem || selectedVaultFilePayload;
+      if (!payload) {
+        showToast('Seleziona una nota salvata o carica un file .razzo', 'error');
+        return;
+      }
+      const pin = vaultUnlockPinInput.value.trim();
+      if (!pin) {
+        showToast('Inserisci il PIN di sblocco della nota', 'error');
+        vaultUnlockPinInput.focus();
+        return;
+      }
+
+      vaultDecryptBtn.disabled = true;
+      try {
+        const decryptedText = await decryptNoteWithPin(payload, pin);
+        vaultModal.classList.add('hidden');
+        switchTab('pickup');
+        await openNoteInChatWindow(payload.code || 'DECIFRATO', pin, decryptedText);
+        showToast('Nota decifrata con successo!', 'success');
+      } catch (err) {
+        showToast(err.message || 'PIN errato: decifratura fallita', 'error');
+      } finally {
+        vaultDecryptBtn.disabled = false;
+      }
+    });
+  }
+
+  // --- EVENTI MODAL: INFORMATIVA LEGALE & BETA TEST ---
+  if (openLegalModalBtn) {
+    openLegalModalBtn.addEventListener('click', () => {
+      legalModal.classList.remove('hidden');
+    });
+  }
+
+  if (closeLegalModalBtn) {
+    closeLegalModalBtn.addEventListener('click', () => {
+      legalModal.classList.add('hidden');
+    });
+  }
+
+  if (agreeLegalModalBtn) {
+    agreeLegalModalBtn.addEventListener('click', () => {
+      legalModal.classList.add('hidden');
     });
   }
 

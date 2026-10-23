@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css?v=2.2">
+  <link rel="stylesheet" href="/style.css?v=3.0">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#ff5e36">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -42,11 +42,38 @@
           <span class="tagline">Locker Digitale Effimero</span>
         </div>
       </div>
-      <div class="system-status" id="systemStatusBadge">
-        <span class="status-dot"></span>
-        <span class="status-label">Online</span>
+      <div class="header-actions">
+        <button type="button" class="btn-header-vault" id="openVaultBtn" title="Apri Cassaforte & Decifra Note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>Note Cifrate</span>
+        </button>
+        <div class="system-status" id="systemStatusBadge">
+          <span class="status-dot"></span>
+          <span class="status-label">Online</span>
+        </div>
       </div>
     </header>
+
+    <!-- Beta Test & Legal Warning Banner -->
+    <div class="beta-disclaimer-banner" id="betaDisclaimerBanner">
+      <div class="beta-banner-inner">
+        <div class="beta-badge-row">
+          <span class="badge-beta-pill">🧪 VERSIONE BETA TEST</span>
+          <span class="badge-legal-pill">⚖️ AVVISO LEGALE IMPORTANTE</span>
+        </div>
+        <p class="beta-notice-text">
+          Razzo Mail è un servizio effimero in fase di <strong>Beta Test</strong> destinato unicamente a scambi leciti.
+          <strong>Qualsiasi utilizzo illecito, abusivo o fraudolento è severamente vietato e sarà perseguito a norma di legge.</strong>
+          Tutti gli accessi sono tracciati nel Registro di Audit forense.
+        </p>
+        <button type="button" class="btn-beta-learn-more" id="openLegalModalBtn">
+          <span>Informativa Legale & Condizioni Beta</span> &rarr;
+        </button>
+      </div>
+    </div>
 
     <!-- Main Card -->
     <main class="main-card glass-panel">
@@ -72,74 +99,96 @@
       <!-- TAB 1: DEPOSITA -->
       <section class="tab-content active" id="depositSection">
         <form id="depositForm" onsubmit="return false;">
-          <!-- Drop Area -->
-          <div class="drop-zone" id="dropZone">
-            <input type="file" id="fileInput" class="file-input-hidden">
-            <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" class="file-input-hidden">
-            <div class="drop-content" id="dropPrompt">
-              <div class="upload-icon-circle">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
+          <!-- Type of Deposit Selector: File vs Messaggio di Testo -->
+          <div class="deposit-mode-pills">
+            <button type="button" class="btn-mode-pill active" id="modeFileBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>📁 Invia File / Foto</span>
+            </button>
+            <button type="button" class="btn-mode-pill" id="modeTextBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>💬 Scrivi Messaggio (Chat)</span>
+            </button>
+          </div>
+
+          <!-- Section A: File Upload Container -->
+          <div class="file-deposit-container" id="fileDepositContainer">
+            <!-- Drop Area -->
+            <div class="drop-zone" id="dropZone">
+              <input type="file" id="fileInput" class="file-input-hidden">
+              <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" class="file-input-hidden">
+              <div class="drop-content" id="dropPrompt">
+                <div class="upload-icon-circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                </div>
+                <div class="drop-text-group">
+                  <p class="drop-primary-text">Tocca o trascina qui il file</p>
+                  <p class="drop-sub-text">Qualsiasi formato &bull; Max <strong>25 MB</strong></p>
+                </div>
               </div>
-              <div class="drop-text-group">
-                <p class="drop-primary-text">Tocca o trascina qui il file</p>
-                <p class="drop-sub-text">Qualsiasi formato &bull; Max <strong>25 MB</strong></p>
+
+              <!-- File Selected View -->
+              <div class="file-preview-card hidden" id="filePreviewCard">
+                <div class="file-info-col">
+                  <div class="file-type-badge" id="fileExtensionBadge">PDF</div>
+                  <div class="file-meta">
+                    <span class="file-name" id="fileNameDisplay">documento.pdf</span>
+                    <span class="file-size" id="fileSizeDisplay">1.4 MB</span>
+                  </div>
+                </div>
+                <button type="button" class="btn-icon-danger" id="removeFileBtn" title="Rimuovi file">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
-            <!-- File Selected View -->
-            <div class="file-preview-card hidden" id="filePreviewCard">
-              <div class="file-info-col">
-                <div class="file-type-badge" id="fileExtensionBadge">PDF</div>
-                <div class="file-meta">
-                  <span class="file-name" id="fileNameDisplay">documento.pdf</span>
-                  <span class="file-size" id="fileSizeDisplay">1.4 MB</span>
-                </div>
-              </div>
-              <button type="button" class="btn-icon-danger" id="removeFileBtn" title="Rimuovi file">
+            <!-- Quick Action Buttons: Gallery & Camera (1-Click Mobile Capture) -->
+            <div class="quick-media-actions" id="quickMediaActions">
+              <button type="button" class="btn-quick-media primary" id="quickGalleryBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
                 </svg>
+                <span>Sfoglia Galleria / File</span>
+              </button>
+              <button type="button" class="btn-quick-media" id="quickCameraBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                  <circle cx="12" cy="13" r="3"/>
+                </svg>
+                <span>Scatta Foto / Video</span>
               </button>
             </div>
           </div>
 
-          <!-- Quick Action Buttons: Gallery & Camera (1-Click Mobile Capture) -->
-          <div class="quick-media-actions" id="quickMediaActions">
-            <button type="button" class="btn-quick-media primary" id="quickGalleryBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                <circle cx="9" cy="9" r="2"/>
-                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-              </svg>
-              <span>Sfoglia Galleria / File</span>
-            </button>
-            <button type="button" class="btn-quick-media" id="quickCameraBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                <circle cx="12" cy="13" r="3"/>
-              </svg>
-              <span>Scatta Foto / Video</span>
-            </button>
-          </div>
-
-          <!-- Postcard Text Option (Switch to secret note) -->
-          <div class="text-mode-toggle">
-            <button type="button" class="btn-link" id="toggleNoteModeBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              <span>Oppure scrivi una cartolina / nota di testo</span>
-            </button>
-          </div>
-
-          <div class="text-note-area hidden" id="textNoteArea">
-            <textarea id="textNoteInput" rows="3" placeholder="Scrivi qui il tuo messaggio segreto da inviare..." maxlength="10000"></textarea>
+          <!-- Section B: Text Note Container (Hidden by default, shown when modeText is selected) -->
+          <div class="text-note-container hidden" id="textNoteContainer">
+            <div class="text-note-header">
+              <div class="text-note-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div class="text-note-label-group">
+                <strong>Messaggio di Testo Effimero</strong>
+                <small>Il destinatario lo leggerà come una chat. Si autodistruggerà dal server.</small>
+              </div>
+            </div>
+            <textarea id="textNoteInput" class="custom-note-textarea" rows="4" placeholder="Scrivi qui il tuo messaggio segreto da inviare nel Locker..." maxlength="10000"></textarea>
           </div>
 
           <!-- Locker Code Generation Card -->
@@ -305,7 +354,7 @@
             </button>
           </div>
 
-          <!-- Real-Time Radar State -->
+          <!-- Real-Time Radar State (per invio file) -->
           <div class="live-radar-box" id="senderRadarBox">
             <span class="pulsing-radar-dot"></span>
             <div class="radar-text-group">
@@ -314,8 +363,21 @@
             </div>
           </div>
 
+          <!-- Pulsante per entrare direttamente nella chat live se è stato inviato un messaggio -->
+          <div class="chat-live-entry-box hidden" id="chatLiveEntryBox">
+            <button type="button" class="btn-primary-action btn-chat-live" id="enterChatAfterDepositBtn">
+              <span class="btn-inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>ENTRA NELLA CHAT LIVE CON QUESTO CODICE</span>
+              </span>
+            </button>
+            <p class="field-hint" style="text-align:center; margin-top:8px;">Potrai continuare a chattare e rispondere liberamente in tempo reale!</p>
+          </div>
+
           <button type="button" class="btn-link btn-reset" id="resetDepositBtn">
-            <span>Invia un altro file</span>
+            <span>Invia un altro file o messaggio</span>
           </button>
         </div>
       </section>
@@ -450,18 +512,307 @@
               </svg>
               <span>Chiudi nota</span>
             </button>
-            <button type="button" class="btn-text-action" id="downloadNoteAsFileBtn" title="Scarica una copia del file di testo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
+          </div>
+        </div>
+
+        <!-- CHAT WINDOW CARD: Per conversazioni effimere e continue in tempo reale -->
+        <div class="chat-window-card hidden" id="chatWindowCard">
+          <div class="chat-header">
+            <div class="chat-contact-info">
+              <div class="chat-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div class="chat-contact-text">
+                <div class="chat-name-row">
+                  <span class="chat-name">Chat Segreta Effimera</span>
+                  <span class="chat-locker-badge" id="chatLockerBadge">#XXXX-XXXX</span>
+                </div>
+                <div class="chat-status-indicator">
+                  <span class="chat-online-dot"></span>
+                  <span id="chatStatusText">Connesso &bull; Scambio in tempo reale</span>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn-chat-icon-close" id="chatTopCloseBtn" title="Chiudi chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
-              <span>Scarica file .txt</span>
+            </button>
+          </div>
+
+          <!-- Chat Messages Area (Lista dinamica scrollabile con auto-scroll) -->
+          <div class="chat-messages-area" id="chatMessagesArea">
+            <div class="chat-date-separator">
+              <span>OGGI &bull; SCAMBIO EFFIMERO IN TEMPO REALE</span>
+            </div>
+            <div class="chat-bubbles-list" id="chatBubblesList">
+              <!-- I messaggi della conversazione vengono generati qui -->
+            </div>
+          </div>
+
+          <!-- Chat Reply Bar (Composer di risposta rapida senza password) -->
+          <form id="chatReplyForm" class="chat-reply-form" autocomplete="off">
+            <div class="chat-reply-input-wrapper">
+              <input type="text" id="chatReplyInput" class="chat-reply-input" placeholder="Scrivi una risposta... (premi Invio per spedire)" maxlength="5000" autocomplete="off" autocorrect="off">
+              <button type="submit" id="chatReplySendBtn" class="chat-reply-send-btn" title="Invia risposta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+
+          <!-- Chat Action Buttons -->
+          <div class="chat-action-bar">
+            <button type="button" class="btn-chat-action" id="chatCopyBtn" title="Copia tutta la conversazione">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+              <span>Copia Chat</span>
+            </button>
+            <button type="button" class="btn-chat-action btn-chat-action-secure" id="chatSaveEncryptedBtn" title="Salva tutta la conversazione cifrata sul tuo dispositivo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Salva Cifrato (PIN)</span>
+            </button>
+            <button type="button" class="btn-chat-action btn-chat-action-danger" id="chatDestroyBtn" title="Distruggi la chat per entrambi e chiudi la stanza">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+              </svg>
+              <span>Distruggi Chat</span>
+            </button>
+            <button type="button" class="btn-chat-action btn-chat-action-close" id="chatBottomCloseBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              <span>Chiudi</span>
             </button>
           </div>
         </div>
       </section>
     </main>
+
+    <!-- MODAL 1: Salva Nota Cifrata con PIN -->
+    <div class="modal-backdrop hidden" id="saveEncryptedModal">
+      <div class="modal-dialog glass-panel">
+        <div class="modal-header">
+          <div class="modal-title">
+            <div class="modal-icon-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <h3>Salva Nota Cifrata con PIN</h3>
+          </div>
+          <button type="button" class="btn-modal-close" id="closeSaveEncryptedModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-description">
+            La nota è già stata <strong>eliminata dal server</strong>. Puoi salvarne una copia criptata sul tuo dispositivo protetta da un <strong>PIN di sicurezza</strong> (Crittografia standard militare AES-256). Solo chi conosce questo PIN potrà rileggerla.
+          </p>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <label for="savePinInput" class="form-label">Imposta o Conferma il PIN di cifratura</label>
+            <div class="input-with-icon">
+              <input type="password" id="savePinInput" class="custom-input" placeholder="Es. 4321 o parola d'ordine" autocomplete="new-password">
+              <button type="button" class="btn-input-eye" id="toggleSavePinEyeBtn" aria-label="Mostra PIN">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <span class="field-hint">Memorizza con cura questo PIN: serve per decifrare la nota!</span>
+          </div>
+
+          <div class="save-targets-box">
+            <label class="save-target-option">
+              <input type="radio" name="saveDestType" value="vault" checked>
+              <div class="save-target-content">
+                <strong>📱 Cassaforte di questo dispositivo</strong>
+                <small>Salva nella memoria sicura locale del browser (crittografato con PIN)</small>
+              </div>
+            </label>
+            <label class="save-target-option">
+              <input type="radio" name="saveDestType" value="file">
+              <div class="save-target-content">
+                <strong>📁 Scarica File Protetto (.razzo)</strong>
+                <small>Genera un file cifrato offline da custodire sul PC o smartphone</small>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancelSaveEncryptedBtn">Annulla</button>
+          <button type="button" class="btn-primary-action" id="confirmSaveEncryptedBtn">
+            <span class="btn-inner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              <span>CIFRA E SALVA</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: Cassaforte Note & Decifra con PIN -->
+    <div class="modal-backdrop hidden" id="vaultModal">
+      <div class="modal-dialog glass-panel">
+        <div class="modal-header">
+          <div class="modal-title">
+            <div class="modal-icon-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <circle cx="12" cy="16" r="1"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <h3>Cassaforte & Note Cifrate</h3>
+          </div>
+          <button type="button" class="btn-modal-close" id="closeVaultModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- Tabs inside vault: Saved in browser VS Upload .razzo file -->
+          <div class="vault-tabs">
+            <button type="button" class="vault-tab-btn active" id="vaultTabLocalBtn">Note Salvate in Memoria</button>
+            <button type="button" class="vault-tab-btn" id="vaultTabFileBtn">Apri File .razzo</button>
+          </div>
+
+          <!-- Vault Section 1: Local Notes -->
+          <div class="vault-section active" id="vaultSectionLocal">
+            <div class="vault-notes-list" id="vaultNotesList">
+              <!-- Elenco note caricate dinamicamente -->
+            </div>
+            <div class="vault-empty hidden" id="vaultEmptyNotice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p>Nessuna nota salvata localmente su questo dispositivo.</p>
+            </div>
+          </div>
+
+          <!-- Vault Section 2: Upload File -->
+          <div class="vault-section hidden" id="vaultSectionFile">
+            <div class="vault-file-drop" id="vaultFileDropZone">
+              <input type="file" id="vaultFileInput" accept=".razzo,.json,.txt" class="file-input-hidden">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="36" height="36">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p><strong>Seleziona o trascina il file .razzo</strong></p>
+              <small>File cifrato salvato in precedenza</small>
+            </div>
+            <div class="file-chosen-box hidden" id="vaultFileChosenBox">
+              <span id="vaultChosenFileName">file.razzo</span>
+            </div>
+          </div>
+
+          <!-- PIN input to decrypt selected note or file -->
+          <div class="form-group vault-decrypt-form hidden" id="vaultDecryptForm">
+            <label for="vaultUnlockPinInput" class="form-label">PIN di Sblocco</label>
+            <div class="input-with-icon">
+              <input type="password" id="vaultUnlockPinInput" class="custom-input" placeholder="Inserisci il PIN di questa nota" autocomplete="current-password">
+              <button type="button" class="btn-input-eye" id="toggleVaultPinEyeBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <button type="button" class="btn-primary-action btn-decrypt" id="vaultDecryptBtn">
+              <span class="btn-inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                  <circle cx="12" cy="16" r="1"/>
+                  <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                </svg>
+                <span>DECIFRA E LEGGI NELLA CHAT</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: Informativa Legale & Condizioni Beta Test -->
+    <div class="modal-backdrop hidden" id="legalModal">
+      <div class="modal-dialog glass-panel legal-dialog">
+        <div class="modal-header">
+          <div class="modal-title">
+            <div class="modal-icon-badge warning-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <h3>Informativa Legale & Fase Beta Test</h3>
+          </div>
+          <button type="button" class="btn-modal-close" id="closeLegalModalBtn">&times;</button>
+        </div>
+        <div class="modal-body legal-modal-body">
+          <div class="legal-section-block">
+            <h4>1. Stato del Progetto: Versione Beta Sperimentale</h4>
+            <p>
+              Razzo Mail è attualmente distribuito in <strong>fase di Beta Test</strong>. Il servizio è fornito "così com'è" a fini di sperimentazione tecnologica su protocolli effimeri ad alta sicurezza. Funzionalità, parametri di conservazione e interfacce possono subire aggiornamenti e ottimizzazioni.
+            </p>
+          </div>
+
+          <div class="legal-section-block highlight-danger">
+            <h4>2. Divieto Assoluto di Usi Illeciti & Perseguibilità Legale</h4>
+            <p>
+              È fatto <strong>espresso e assoluto divieto</strong> di utilizzare Razzo Mail per:
+            </p>
+            <ul>
+              <li>Diffusione di materiale pedopornografico, pedopornografia o abusi su minori;</li>
+              <li>Distribuzione di malware, spyware, virus informatici, ransomware o exploit;</li>
+              <li>Attività estorsive, phishing, frodi telematiche o minacce;</li>
+              <li>Scambio di contenuti protetti da copyright senza debita autorizzazione;</li>
+              <li>Qualsiasi altra attività contraria alle normative vigenti nell'ordinamento italiano, europeo e internazionale.</li>
+            </ul>
+            <p>
+              <strong>Eventuali usi illeciti, abusi o violazioni saranno perseguiti con la massima severità a norma di legge.</strong>
+            </p>
+          </div>
+
+          <div class="legal-section-block">
+            <h4>3. Registro Forense di Audit Immutabile (Legal Proof)</h4>
+            <p>
+              A salvaguardia dell'integrità del sistema e a supporto delle Autorità Giudiziarie e Forze dell'Ordine competenti, per ciascuna transazione vengono registrati permanentemente nel Registro di Audit (<code>audit_log.jsonl</code>):
+            </p>
+            <ul>
+              <li>Indirizzo IP reale di mittente e destinatario;</li>
+              <li>Data e orario esatto UTC di deposito e ritiro;</li>
+              <li>Impronta crittografica <strong>SHA-256</strong> univoca del contenuto trasmesso;</li>
+              <li>User-Agent e metadati di connessione.</li>
+            </ul>
+            <p>
+              Anche dopo l'autodistruzione fisica del file, tali evidenze probatorie rimangono a disposizione delle Autorità per l'identificazione degli autori di reati informatici.
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-primary-action" id="agreeLegalModalBtn">
+            <span class="btn-inner">Ho Compreso e Accetto</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Notification Toast -->
     <div class="toast-container" id="toastContainer"></div>
@@ -487,16 +838,19 @@
             <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
-          <span>Crittografia at-rest</span>
+          <span>Crittografia at-rest & PIN locale</span>
         </div>
       </div>
-      <p class="legal-notice">Razzo Mail è un servizio effimero per scambi leciti. I contenuti contrari alla legge sono rigorosamente vietati e perseguiti.</p>
+      <p class="legal-notice">
+        <strong>⚠️ FASE BETA TEST:</strong> Razzo Mail è un servizio effimero riservato a scambi leciti.
+        Qualsiasi utilizzo illecito sarà perseguito a norma di legge. Tracciamento forense IP e SHA-256 attivo.
+      </p>
       <div style="margin-top: 0.75rem; text-align: center;">
         <a href="/admin.html" style="color: #64748b; font-size: 0.75rem; text-decoration: none; opacity: 0.7;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">🛡️ Area Riservata Gestione</a>
       </div>
     </footer>
   </div>
 
-  <script src="/app.js?v=2.2"></script>
+  <script src="/app.js?v=3.1"></script>
 </body>
 </html>
