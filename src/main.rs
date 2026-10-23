@@ -1166,37 +1166,6 @@ async fn handle_ws_socket(mut socket: WebSocket, state: AppState, code: String, 
             }
             client_msg = socket.recv() => {
                 match client_msg {
-                    Some(Ok(Message::Text(text))) => {
-                        // Supporta invio messaggio di chat via WebSocket
-                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
-                            if val.get("type").and_then(|v| v.as_str()) == Some("chat_message") {
-                                if let Some(msg_text) = val.get("text").and_then(|v| v.as_str()) {
-                                    let trimmed = msg_text.trim();
-                                    if !trimmed.is_empty() {
-                                        let sender_role = val.get("sender_role").and_then(|v| v.as_str()).unwrap_or("user").to_string();
-                                        let sender_id = val.get("sender_id").and_then(|v| v.as_str()).unwrap_or("anon").to_string();
-                                        let chat_item = ChatMessageItem {
-                                            id: uuid::Uuid::new_v4().to_string(),
-                                            sender_role,
-                                            sender_id,
-                                            text: trimmed.to_string(),
-                                            timestamp: Utc::now(),
-                                        };
-                                        {
-                                            let mut rooms = state.chat_rooms.write().await;
-                                            rooms.entry(code.clone()).or_default().push(chat_item.clone());
-                                        }
-                                        let ws_payload = serde_json::json!({
-                                            "type": "chat_message",
-                                            "code": code,
-                                            "message": chat_item,
-                                        });
-                                        notify_channel(&state, &code, ws_payload.to_string()).await;
-                                    }
-                                }
-                            }
-                        }
-                    }
                     Some(Ok(Message::Close(_))) | None => break,
                     _ => {}
                 }

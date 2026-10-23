@@ -844,25 +844,14 @@ document.addEventListener('DOMContentLoaded', () => {
     chatReplyForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!activeChatCode) return;
+      if (chatReplyForm.dataset.submitting === 'true') return;
       const text = chatReplyInput.value.trim();
       if (!text) return;
 
+      chatReplyForm.dataset.submitting = 'true';
       chatReplyInput.value = '';
 
-      const outgoingPayload = {
-        type: 'chat_message',
-        code: activeChatCode,
-        text: text,
-        sender_role: myChatRole,
-        sender_id: myChatId
-      };
-
-      // Invia via WebSocket per recapito istantaneo
-      if (activeWs && activeWs.readyState === WebSocket.OPEN) {
-        activeWs.send(JSON.stringify(outgoingPayload));
-      }
-
-      // Invia anche via HTTP POST per memorizzazione e fallback
+      // Invia via HTTP POST per persistenza e broadcast automatico a tutti i socket
       try {
         const res = await fetch(`/api/chat/${encodeURIComponent(activeChatCode)}/message`, {
           method: 'POST',
@@ -876,10 +865,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (res.ok) {
           const savedMsg = await res.json();
           appendChatMessage(savedMsg);
+        } else {
+          showToast('Impossibile inviare il messaggio', 'error');
         }
       } catch (err) {
         console.error('Errore invio messaggio', err);
         showToast('Errore durante l\'invio del messaggio', 'error');
+      } finally {
+        delete chatReplyForm.dataset.submitting;
       }
 
       if (chatReplyInput) chatReplyInput.focus();
@@ -1442,7 +1435,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const decryptedText = await decryptNoteWithPin(payload, pin);
         vaultModal.classList.add('hidden');
         switchTab('pickup');
-        await openNoteInChatWindow(payload.code || 'DECIFRATO', pin, decryptedText);
+        await openLiveChat(payload.code || 'DECIFRATO', 'receiver', pin);
+        appendChatMessage({
+          id: 'vault_' + Date.now(),
+          sender_role: 'sender',
+          sender_id: 'sender',
+          text: decryptedText,
+          timestamp: new Date().toISOString()
+        });
         showToast('Nota decifrata con successo!', 'success');
       } catch (err) {
         showToast(err.message || 'PIN errato: decifratura fallita', 'error');

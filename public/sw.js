@@ -1,5 +1,5 @@
-// Razzo Mail Service Worker v6
-const CACHE_NAME = 'razzo-mail-v6';
+// Razzo Mail Service Worker v7
+const CACHE_NAME = 'razzo-mail-v7';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
